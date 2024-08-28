@@ -1,0 +1,10 @@
+# This file is sourced from /etc/init.d/gab.
+#
+# Set the two environment variables below as follows:
+#
+#       1 = start or stop gab
+#       0 = do not start or stop gab
+#
+
+GAB_START=1
+GAB_STOP=1

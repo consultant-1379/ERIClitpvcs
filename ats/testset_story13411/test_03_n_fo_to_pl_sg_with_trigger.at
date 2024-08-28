@@ -1,0 +1,35 @@
+###############################################################
+#	Description: Test to validate against if a user tried to
+#	bring their service group from fail over to parallel
+#
+#	Steps:
+#		1. Create a fail over VCS SG
+#		2. Create a VCS trigger
+#		3. Create/ Run PLan
+#		4. Update the service group to go to fail over to
+#		parallel
+#		5. Create/ Run Plan
+#		6. Assert validation message is received
+#
+###############################################################
+
+runLitpScript ../cluster_common.atlib
+
+# Step 1: Create a fail over VCS SG
+litp create -t service -p /software/services/mock -o service_name='mocklsb'
+litp create -t vcs-clustered-service -p /deployments/test/clusters/cluster1/services/cs1/ -o name="cs1" standby=1 active=1 node_list="node_1,node_2"
+litp inherit -s /software/services/mock -p /deployments/test/clusters/cluster1/services/cs1/applications/mock
+
+# Step 2: Create a VCS trigger
+litp create -t vcs-trigger -p /deployments/test/clusters/cluster1/services/cs1/triggers/trig1 -o trigger_type=nofailover
+
+# Step 3: Create/ Run Plan
+litp create_plan
+litp run_plan
+
+# Step 4: Update the service group to go from fail over to parallel
+litp update -p /deployments/test/clusters/cluster1/services/cs1/ -o name="cs1" standby=0 active=2 node_list="node_1,node_2"
+
+# Step 5: Create/ Run Plan
+# Step 6: Assert Error Message
+assertError --err_type ValidationError --err_message 'Create plan failed: nofailover trigger type is only applicable to failover vcs-clustered-services' --err_vpath /deployments/test/clusters/cluster1/services/cs1/triggers/trig1 create_plan

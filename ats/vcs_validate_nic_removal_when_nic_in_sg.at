@@ -1,0 +1,32 @@
+runLitpScript vcs_nic_sg_common.atlib
+
+# check that errors are thrown when removing nic that is added to a service group
+#
+litp create -p /infrastructure/networking/networks/sg_network       -t network      -o name=sg_network litp_management=false subnet=10.10.10.0/24
+
+# Set up nics for node 1 and node 2
+litp create -p /deployments/test/clusters/cluster1/nodes/node_1/network_interfaces/nic_0  -t eth    -o device_name=eth0 macaddress=08:00:27:5B:C1:3F network_name=mgmt ipaddress=10.10.10.101
+litp create -p /deployments/test/clusters/cluster1/nodes/node_1/network_interfaces/nic_2  -t eth    -o device_name=eth1 macaddress=08:00:27:5B:C1:31 network_name=traffic
+litp create -p /deployments/test/clusters/cluster1/nodes/node_1/network_interfaces/nic_3  -t eth    -o device_name=eth2 macaddress=08:00:27:06:C0:61 network_name=heartbeat1
+litp create -p /deployments/test/clusters/cluster1/nodes/node_1/network_interfaces/nic_1  -t eth    -o device_name=eth3 macaddress=08:00:27:21:7D:BC network_name=heartbeat2
+litp create -p /deployments/test/clusters/cluster1/nodes/node_1/network_interfaces/nic_4  -t eth    -o device_name=eth4 macaddress=08:00:27:21:7D:B7 network_name=sg_network ipaddress=10.10.10.105
+
+litp create -p /deployments/test/clusters/cluster1/nodes/node_2/network_interfaces/nic_0  -t eth    -o device_name=eth0 macaddress=08:00:27:5B:C1:31 network_name=mgmt ipaddress=10.10.10.102
+litp create -p /deployments/test/clusters/cluster1/nodes/node_2/network_interfaces/nic_1  -t eth    -o device_name=eth1 macaddress=08:00:27:5B:C1:32 network_name=traffic
+litp create -p /deployments/test/clusters/cluster1/nodes/node_2/network_interfaces/nic_2  -t eth    -o device_name=eth2 macaddress=08:00:27:06:C0:62 network_name=heartbeat1
+litp create -p /deployments/test/clusters/cluster1/nodes/node_2/network_interfaces/nic_3  -t eth    -o device_name=eth3 macaddress=08:00:27:21:7D:B3 network_name=sg_network ipaddress=10.10.10.106
+litp create -p /deployments/test/clusters/cluster1/nodes/node_2/network_interfaces/nic_4  -t eth    -o device_name=eth4 macaddress=08:00:27:21:7D:B7 network_name=heartbeat2
+
+
+litp create -t vcs-clustered-service -p /deployments/test/clusters/cluster1/services/cs1 -o name="httpd" active=2 standby=0 node_list="node_1,node_2"
+litp create -t lsb-runtime           -p /deployments/test/clusters/cluster1/services/cs1/runtimes/apache -o service_name=httpd
+
+litp create -p /deployments/test/clusters/cluster1/services/cs1/runtimes/apache/ipaddresses/ip1 -t vip -o network_name='sg_network' ipaddress='10.10.10.155'
+litp create -p /deployments/test/clusters/cluster1/services/cs1/runtimes/apache/ipaddresses/ip2 -t vip -o network_name='sg_network' ipaddress='10.10.10.156'
+
+litp create_plan
+litp run_plan
+
+litp remove -p /deployments/test/clusters/cluster1/nodes/node_2/network_interfaces/nic_3
+
+assertError --err_vpath /deployments/test/clusters/cluster1/nodes/node_2/network_interfaces/nic_3 --err_message "This interface is in use by /deployments/test/clusters/cluster1/services/cs1/runtimes/apache/ipaddresses/ip1, /deployments/test/clusters/cluster1/services/cs1/runtimes/apache/ipaddresses/ip2" create_plan

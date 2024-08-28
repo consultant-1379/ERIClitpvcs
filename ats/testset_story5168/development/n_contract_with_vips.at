@@ -1,0 +1,21 @@
+runLitpScript ../../cluster_common.atlib
+
+litp create -t service -p /software/services/mock -o service_name='mocklsb'
+
+# Create service group on node_1 and node_2
+litp create -t vcs-clustered-service -p /deployments/test/clusters/cluster1/services/cs1/ -o name="cs1" standby=0 active=2 node_list="node_1,node_2"
+litp inherit -s /software/services/mock -p /deployments/test/clusters/cluster1/services/cs1/applications/mock
+
+# Create 2 vips for service group
+litp create -p /deployments/test/clusters/cluster1/services/cs1/ipaddresses/ip1 -t vip -o network_name='mgmt' ipaddress='10.10.10.155'
+litp create -p /deployments/test/clusters/cluster1/services/cs1/ipaddresses/ip2 -t vip -o network_name='mgmt' ipaddress='10.10.10.156'
+
+litp create_plan
+litp run_plan
+
+# Contract service group to node_1
+litp update -p /deployments/test/clusters/cluster1/services/cs1/ -o standby=0 active=1 node_list="node_1"
+litp remove -p /deployments/test/clusters/cluster1/services/cs1/ipaddresses/ip2
+let __node_list_err --err_vpath /deployments/test/clusters/cluster1/services/cs1 --err_type ValidationError  --err_message 'Removal of nodes from node_list of service containing VIPs is not supported.'
+assertError __node_list_err create_plan
+

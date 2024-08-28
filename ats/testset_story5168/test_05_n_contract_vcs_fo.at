@@ -1,0 +1,28 @@
+# test_05_n_contract_vcs_fo.at (AT)
+#
+# Description: Validate if a user has a fail over VCS clustered service, that they cannot contract the CS
+#
+# Steps:
+#
+# 1. Create a FO type VCS CS
+# 2. Update node list with VCS CS to remove a node
+# 3. Expect validation error to be received on create plan
+#
+
+# Prerequisite - LITP Deployment
+runLitpScript ../cluster_common.atlib
+
+# 1. Create a FO type VCS CS
+litp create -t service -p /software/services/mock -o service_name=mocklsb
+litp create -t vcs-clustered-service -p /deployments/test/clusters/cluster1/services/cs1 -o name="cs1" active=1 standby=1 node_list="node_1,node_2"
+litp inherit -s /software/services/mock -p /deployments/test/clusters/cluster1/services/cs1/applications/mock
+
+litp create_plan
+litp run_plan
+
+# 2. Remove node from node list
+litp update -p /deployments/test/clusters/cluster1/services/cs1 -o active=1 standby=0 node_list="node_1"
+
+# 3. Expect validation error to be received on create plan
+let __node_list_err --errors_length 1 --err_vpath /deployments/test/clusters/cluster1/services/cs1 --err_type ValidationError  --err_message 'Reconfigure from failover to parallel expects the same node list'
+assertError __node_list_err create_plan

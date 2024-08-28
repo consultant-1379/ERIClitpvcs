@@ -1,0 +1,10 @@
+runLitpScript cluster_common.atlib
+
+litp create_plan
+litp run_plan
+
+litp create -p /deployments/test/clusters/cluster1/fencing_disks/fd1                        -t disk             -o uuid=30000000fc85c928 size=100M name=fencing_disk_1
+litp create -p /deployments/test/clusters/cluster1/fencing_disks/fd2                        -t disk             -o uuid=30000000ef27515f size=100M name=fencing_disk_2
+litp create -p /deployments/test/clusters/cluster1/fencing_disks/fd3                        -t disk             -o uuid=30000000dbc0f9c6 size=100M name=fencing_disk_3
+
+assertError --err_message "Fencing disks may not be added to an existing cluster" create_plan

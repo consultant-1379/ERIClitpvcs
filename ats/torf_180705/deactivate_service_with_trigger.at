@@ -1,0 +1,42 @@
+add-plugins ../testset_story128825/plugins/set_deactivated
+runLitpScript ../cluster_common.atlib
+runLitpScript ../add_2_nodes_to_cluster.atlib
+
+litp create_plan
+litp run_plan
+
+litp create -t service -p /software/services/mock -o service_name=mock
+litp create -t service -p /software/services/mock2 -o service_name=mock2
+
+litp create -t vcs-clustered-service -p /deployments/test/clusters/cluster1/services/cs1 -o name=cs1 active=1 standby=1 node_list=node_1,node_2
+litp inherit -s /software/services/mock -p /deployments/test/clusters/cluster1/services/cs1/applications/mock
+litp create -t vcs-trigger -p /deployments/test/clusters/cluster1/services/cs1/triggers/t1 -o trigger_type="nofailover"
+
+litp create -t vcs-clustered-service -p /deployments/test/clusters/cluster1/services/csA -o name=csA active=1 standby=1 node_list=node_2,node_3
+litp inherit -s /software/services/mock2 -p /deployments/test/clusters/cluster1/services/csA/applications/mock2
+litp create -t vcs-trigger -p /deployments/test/clusters/cluster1/services/csA/triggers/t1 -o trigger_type="nofailover"
+
+# Get into an applied state, to ensure node locks
+litp create_plan
+assertConfigTask mn1 vcs::configure_nofailover_trigger cluster1 /deployments/test/clusters/cluster1/nodes/node_1 trigger_map='[["Grp_CS_cluster1_cs1", null]]'
+#assertConfigTask mn2 vcs::configure_nofailover_trigger cluster1 /deployments/test/clusters/cluster1/nodes/node_2 trigger_map='[["Grp_CS_cluster1_cs1", null], ["Grp_CS_cluster1_csA", null]]'
+assertConfigTask mn3 vcs::configure_nofailover_trigger cluster1 /deployments/test/clusters/cluster1/nodes/node_3 trigger_map='[["Grp_CS_cluster1_csA", null]]'
+assertCallbackTask callback_method /deployments/test/clusters/cluster1/services/cs1/triggers/t1 callback_func=enable_or_disable_trigger_cb callback_class=VcsCluster group_name=Grp_CS_cluster1_cs1 cluster_vpath=/deployments/test/clusters/cluster1 trigger_type=nofailover delete=False
+assertCallbackTask callback_method /deployments/test/clusters/cluster1/services/csA/triggers/t1 callback_func=enable_or_disable_trigger_cb callback_class=VcsCluster group_name=Grp_CS_cluster1_csA cluster_vpath=/deployments/test/clusters/cluster1 trigger_type=nofailover delete=False
+litp run_plan
+
+litp create -t vcs-clustered-service -p /deployments/test/clusters/cluster1/services/cs2 -o name=cs2 active=1 standby=1 node_list=node_3,node_4 deactivates=cs1
+litp inherit -s /software/services/mock -p /deployments/test/clusters/cluster1/services/cs2/applications/mock
+litp create -t vcs-trigger -p /deployments/test/clusters/cluster1/services/cs2/triggers/t1 -o trigger_type="nofailover"
+litp create_plan
+#assertConfigTask mn3 vcs::configure_nofailover_trigger cluster1 /deployments/test/clusters/cluster1/nodes/node_3 trigger_map='[["Grp_CS_cluster1_csA", null], ["Grp_CS_cluster1_cs2", null]]'
+assertConfigTask mn4 vcs::configure_nofailover_trigger cluster1 /deployments/test/clusters/cluster1/nodes/node_4 trigger_map='[["Grp_CS_cluster1_cs2", null]]'
+assertCallbackTask callback_method /deployments/test/clusters/cluster1/services/cs2/triggers/t1 callback_func=enable_or_disable_trigger_cb callback_class=VcsCluster group_name=Grp_CS_cluster1_cs2 cluster_vpath=/deployments/test/clusters/cluster1 trigger_type=nofailover delete=False
+litp run_plan
+
+litp create_plan
+assertConfigTask mn1 vcs::remove_nofailover_trigger cluster1 /deployments/test/clusters/cluster1/nodes/node_1
+assertConfigTask mn2 vcs::configure_nofailover_trigger cluster1 /deployments/test/clusters/cluster1/nodes/node_2 trigger_map='[["Grp_CS_cluster1_csA", null]]'
+
+add-plugins ../testset_story128825/plugins/reset_gen_deact_task
+

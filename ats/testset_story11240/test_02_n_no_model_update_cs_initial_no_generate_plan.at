@@ -1,0 +1,31 @@
+# test_02_n_no_model_update_cs_initial_no_generate_plan.at
+
+# Description:
+#
+# When the new property, cs_initial_online, is updated and there are no changes in the model that would generate plan tasks, the property update is ignored.
+#
+# Test Steps:
+#
+# 1. Execute a litp update command on the vcs-cluster model item, setting the cs_initial_online property value to off.
+# 2. Assert a DoNothingPlanErrorwhen litp create_plan command is executed
+#
+# Expected Result:
+#
+# Property cs_initial_online is ignored on create_plan if no changes exist in the model as the vcs-clustered-service is in an applied state after the plan is run.
+
+# Prerequisite - LITP Deployment
+# # From cluster_common.atlib /w modified create cluster
+runLitpScript ../cluster_common.atlib
+
+litp create -t service -p /software/services/mock -o service_name=mocklsb
+litp create -t vcs-clustered-service -p /deployments/test/clusters/cluster1/services/cs1 -o name="cs1" active=2 standby=0 node_list="node_1,node_2"
+litp inherit -s /software/services/mock -p /deployments/test/clusters/cluster1/services/cs1/applications/mock
+
+litp create_plan
+litp run_plan
+
+# 1. Execute a litp update command on the vcs-cluster model item, setting the cs_initial_online property value to off
+litp update -p /deployments/test/clusters/cluster1 -o cs_initial_online="off"
+
+# 2. Execute a litp create_plan command and Assert a DoNothingPlanError
+assertError  --err_type DoNothingPlanError create_plan

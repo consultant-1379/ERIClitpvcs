@@ -1,0 +1,30 @@
+# Prerequisite - LITP deployment
+runLitpScript ../cluster_common.atlib
+runLitpScript ../add_2_nodes_to_cluster.atlib
+
+# 1. Create a failover service group
+litp create -t vcs-clustered-service -p /deployments/test/clusters/cluster1/services/CS1 -o name=cs1 active=1 standby=1 node_list=node_1,node_2
+litp create -t service -p /software/services/service01 -o service_name=service01
+litp inherit -s /software/services/service01 -p /deployments/test/clusters/cluster1/services/CS1/applications/service01
+litp create -t vip -p /deployments/test/clusters/cluster1/services/CS1/ipaddresses/ip1 -o network_name=mgmt ipaddress=10.10.10.156
+
+litp create_plan
+litp run_plan
+
+# 2. Create 2 service groups that both deactivate CS1
+litp create -t vcs-clustered-service -p /deployments/test/clusters/cluster1/services/CS2 -o name=cs2 active=1 standby=1 node_list=node_3,node_4 deactivates=CS1
+litp inherit -s /software/services/service01 -p /deployments/test/clusters/cluster1/services/CS2/applications/service01
+litp create -t vip -p /deployments/test/clusters/cluster1/services/CS2/ipaddresses/ip1 -o network_name=mgmt ipaddress=10.10.10.156
+
+litp create -t vcs-clustered-service -p /deployments/test/clusters/cluster1/services/CS3 -o name=cs3 active=1 standby=1 node_list=node_3,node_4 deactivates=CS1
+litp inherit -s /software/services/service01 -p /deployments/test/clusters/cluster1/services/CS3/applications/service01
+litp create -t vip -p /deployments/test/clusters/cluster1/services/CS3/ipaddresses/ip1 -o network_name=mgmt ipaddress=10.10.10.156
+
+# 3. Expect errors for multiple deactivations in the cluster
+#    and for the # duplication of vips in the services that are not a deactivation pair, CS2 and CS3
+let __err1 --err_type ValidationError --err_vpath /deployments/test/clusters/cluster1/services/CS2 --err_message 'Cannot deactivate more than one vcs-clustered-service within the same vcs-cluster'
+let __err2 --err_type ValidationError --err_vpath /deployments/test/clusters/cluster1/services/CS3 --err_message 'Cannot deactivate more than one vcs-clustered-service within the same vcs-cluster'
+let __err3 --err_type ValidationError --err_vpath /deployments/test/clusters/cluster1/services/CS2/ipaddresses/ip1 --err_message 'IP address "10.10.10.156" can only be used once in deployment.'
+let __err4 --err_type ValidationError --err_vpath /deployments/test/clusters/cluster1/services/CS3/ipaddresses/ip1 --err_message 'IP address "10.10.10.156" can only be used once in deployment.'
+let __err5 --err_type ValidationError --err_vpath /deployments/test/clusters/cluster1 --err_message 'Cluster services CS3 and CS2, on cluster cluster1, both attempt to start service service01 on nodes: mn3, mn4'
+assertError --errors_length 5 __err1 __err2 __err3 __err4 create_plan

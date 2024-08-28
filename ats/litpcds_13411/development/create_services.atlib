@@ -1,0 +1,9 @@
+
+litp create -t service -p /software/services/s1 -o service_name=svc1
+litp create -t vcs-clustered-service -p /deployments/test/clusters/cluster1/services/cs1 -o active=1 standby=1 name="cs1" node_list="node_1,node_2"
+litp inherit -s /software/services/s1 -p /deployments/test/clusters/cluster1/services/cs1/applications/app1
+
+litp create -t service -p /software/services/s2 -o service_name=svc2
+litp create -t vcs-clustered-service -p /deployments/test/clusters/cluster1/services/cs2 -o active=1 standby=1 name="cs2" node_list="node_2,node_3"
+litp inherit -s /software/services/s2 -p /deployments/test/clusters/cluster1/services/cs2/applications/app2
+

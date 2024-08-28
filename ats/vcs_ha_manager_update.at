@@ -1,0 +1,13 @@
+runLitpScript cluster_common.atlib # Explicitly set the ha_manager property to empty string
+litp update -p /deployments/test/clusters/cluster1 -o ha_manager=''
+
+# Create a vcs clustered service.
+litp create -t vcs-clustered-service -p /deployments/test/clusters/cluster1/services/cs1 -o active=1 standby=1 name="cs1" node_list="node_1,node_2"
+litp create -t lsb-runtime -p /deployments/test/clusters/cluster1/services/cs1/runtimes/runtime1 -o service_name='foobar'
+
+
+# LITPCDS-11647: Updating a property to empty string no longer deletes propety
+assertProperty /deployments/test/clusters/cluster1 -o ha_manager=''
+litp create_plan
+# Assert the ha_manager property is vcs.
+assertProperty /deployments/test/clusters/cluster1 -o ha_manager="vcs"

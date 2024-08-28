@@ -1,0 +1,23 @@
+# AT to test that if I have 2 mistakes in my model (one service not exist, and another circular dependency, then I get both errors on create_plan)
+
+runLitpScript ../cluster_common.atlib
+
+litp create -t vcs-clustered-service -p /deployments/test/clusters/cluster1/services/cs1 -o name="service1" active=1 standby=0 node_list="node_1" dependency_list=cs2
+litp create -t service -p /software/services/service1 -o service_name=service1
+litp inherit -s /software/services/service1 -p /deployments/test/clusters/cluster1/services/cs1/applications/service1
+
+litp create -t vcs-clustered-service -p /deployments/test/clusters/cluster1/services/cs2 -o name="service2" active=1 standby=0 node_list="node_1" dependency_list=cs1
+litp create -t service -p /software/services/service2 -o service_name=service2
+litp inherit -s /software/services/service2 -p /deployments/test/clusters/cluster1/services/cs2/applications/service2
+
+litp create -t vcs-clustered-service -p /deployments/test/clusters/cluster1/services/cs3 -o name="service3" active=1 standby=0 node_list="node_1" dependency_list=nonexist
+litp create -t service -p /software/services/service3 -o service_name=service3
+litp inherit -s /software/services/service3 -p /deployments/test/clusters/cluster1/services/cs3/applications/service3
+
+assertError --errors_length=2 --err_type ValidationError --err_vpath /deployments/test/clusters/cluster1/services/cs3 --err_message "Create plan failed: '/deployments/test/clusters/cluster1/services/nonexist' does not exist. Please ensure dependency_list property is correct" create_plan
+assertError --errors_length=2 --err_type ValidationError --err_vpath /deployments/test/clusters/cluster1 --err_message 'Create plan failed: A circular dependency has been detected between the following clustered-services: "cs1" and "cs2". Check the "dependency_list" property of each clustered-service item to resolve the issue.' create_plan
+
+# Remove the nonexist dependency which should lead to only 1 validation error
+litp update -p /deployments/test/clusters/cluster1/services/cs3 -o dependency_list=''
+
+assertError --errors_length=1 --err_type ValidationError --err_vpath /deployments/test/clusters/cluster1 --err_message 'Create plan failed: A circular dependency has been detected between the following clustered-services: "cs1" and "cs2". Check the "dependency_list" property of each clustered-service item to resolve the issue.' create_plan

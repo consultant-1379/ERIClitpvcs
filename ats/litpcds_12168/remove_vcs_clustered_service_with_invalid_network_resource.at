@@ -1,0 +1,12 @@
+runLitpScript ../cluster_common.atlib
+
+litp create -t vcs-clustered-service -p /deployments/test/clusters/cluster1/services/cs1 -o name="cs1" active=1 standby=1 node_list="node_1,node_2"
+litp create -t lsb-runtime -p /deployments/test/clusters/cluster1/services/cs1/runtimes/dovecot -o name=flyingdoves service_name=dovecot
+litp create -t vip -p /deployments/test/clusters/cluster1/services/cs1/ipaddresses/ip1 -o network_name='mgmt' ipaddress='10.10.10.155'
+
+assertError --err_message 'An application must be defined under "cs1" to use a vip' create_plan
+
+litp remove -p /deployments/test/clusters/cluster1/services/cs1
+
+litp create_plan
+litp run_plan

@@ -1,0 +1,37 @@
+
+runLitpScript infrastructure.atlib
+runLitpScript node1.atlib
+runLitpScript node2.atlib
+runLitpScript node3.atlib
+runLitpScript node4.atlib
+add-plugins mock_callbacks
+
+litp create_plan
+litp run_plan
+
+assertConfigTask mn1 vcs::configure cluster1 /deployments/test/clusters/cluster1/nodes/node_1 number_of_nodes='3' manage_vxfencing='false' heartbeats_MACs='{"eth3": "08:00:27:21:7D:BC", "eth2": "08:00:27:06:C0:61"}' hostname='mn1' clust_type='sfha' cluster_name='cluster1' fencing_dg_name='null' cluster_ID='1' managment_MAC='{"eth0": "08:00:27:5B:C1:3F"}' cluster_UUID='16f764c0-8637-3668-a788-33d313f8ea20' license_key='ENTERPRISE' hostnames='{"1": "mn3", "0": "mn4", "3": "mn1", "2": "mn2"}' rpm_list='VRTSveki VRTSperl VRTSvlic VRTSspt VRTSvxvm VRTSaslapm VRTSvxfs VRTSfssdk VRTSllt VRTSgab VRTSvxfen VRTSamf VRTSpython VRTSvcs VRTSvcsag VRTSvcsea VRTSdbed VRTSodm VRTSsfmh VRTSvbs VRTSvcswiz VRTSsfcpi VRTSglm VRTScavf VRTSgms' base_os='rhel6' heartbeats_SAPs='{}' management_SAP='{}' boot_mode='bios'
+assertConfigTask mn2 vcs::configure cluster1 /deployments/test/clusters/cluster1/nodes/node_2 number_of_nodes='3' manage_vxfencing='false' heartbeats_MACs='{"eth3": "08:00:27:21:7D:B3", "eth2": "08:00:27:06:C0:62"}' hostname='mn2' clust_type='sfha' cluster_name='cluster1' fencing_dg_name='null' cluster_ID='1' managment_MAC='{"eth0": "08:00:27:5B:C1:31"}' cluster_UUID='16f764c0-8637-3668-a788-33d313f8ea20' license_key='ENTERPRISE' hostnames='{"1": "mn3", "0": "mn4", "3": "mn1", "2": "mn2"}' rpm_list='VRTSveki VRTSperl VRTSvlic VRTSspt VRTSvxvm VRTSaslapm VRTSvxfs VRTSfssdk VRTSllt VRTSgab VRTSvxfen VRTSamf VRTSpython VRTSvcs VRTSvcsag VRTSvcsea VRTSdbed VRTSodm VRTSsfmh VRTSvbs VRTSvcswiz VRTSsfcpi VRTSglm VRTScavf VRTSgms' base_os='rhel6' heartbeats_SAPs='{}' management_SAP='{}' boot_mode='bios'
+assertConfigTask mn3 vcs::configure cluster1 /deployments/test/clusters/cluster1/nodes/node_3 number_of_nodes='3' manage_vxfencing='false' heartbeats_MACs='{"eth3": "08:00:27:21:7D:B3", "eth2": "08:00:27:06:C0:63"}' hostname='mn3' clust_type='sfha' cluster_name='cluster1' fencing_dg_name='null' cluster_ID='1' managment_MAC='{"eth0": "08:00:27:5B:C1:32"}' cluster_UUID='16f764c0-8637-3668-a788-33d313f8ea20' license_key='ENTERPRISE' hostnames='{"1": "mn3", "0": "mn4", "3": "mn1", "2": "mn2"}' rpm_list='VRTSveki VRTSperl VRTSvlic VRTSspt VRTSvxvm VRTSaslapm VRTSvxfs VRTSfssdk VRTSllt VRTSgab VRTSvxfen VRTSamf VRTSpython VRTSvcs VRTSvcsag VRTSvcsea VRTSdbed VRTSodm VRTSsfmh VRTSvbs VRTSvcswiz VRTSsfcpi VRTSglm VRTScavf VRTSgms' base_os='rhel6' heartbeats_SAPs='{}' management_SAP='{}' boot_mode='bios'
+assertConfigTask mn4 vcs::configure cluster1 /deployments/test/clusters/cluster1/nodes/node_4 number_of_nodes='3' manage_vxfencing='false' heartbeats_MACs='{"eth3": "08:00:27:21:7D:B4", "eth2": "08:00:27:06:C0:64"}' hostname='mn4' clust_type='sfha' cluster_name='cluster1' fencing_dg_name='null' cluster_ID='1' managment_MAC='{"eth0": "08:00:27:5B:C1:33"}' cluster_UUID='16f764c0-8637-3668-a788-33d313f8ea20' license_key='ENTERPRISE' hostnames='{"1": "mn3", "0": "mn4", "3": "mn1", "2": "mn2"}' rpm_list='VRTSveki VRTSperl VRTSvlic VRTSspt VRTSvxvm VRTSaslapm VRTSvxfs VRTSfssdk VRTSllt VRTSgab VRTSvxfen VRTSamf VRTSpython VRTSvcs VRTSvcsag VRTSvcsea VRTSdbed VRTSodm VRTSsfmh VRTSvbs VRTSvcswiz VRTSsfcpi VRTSglm VRTScavf VRTSgms' base_os='rhel6' heartbeats_SAPs='{}' management_SAP='{}' boot_mode='bios'
+
+litp remove -p /deployments/test/clusters/cluster1/nodes/node_2
+# mock the return value for the llthosts file to include all nodes
+add-plugins facter_mock_plugin_1234
+litp create_plan
+
+# fail a the Check VCS task in the plan that is generated after all nodes are finished rolling over
+failCallbackTask mock_check_vcs_callback /deployments/test/clusters/cluster1
+litp run_plan
+
+# As the nodes are updated, the llthosts file will not have node 2
+add-plugins facter_mock_plugin_134
+
+# Recreate the plan and ensure the update to the llthosts handles the fact that it has already been updated
+litp create_plan
+
+assertConfigTask mn1 vcs::configure cluster1 /deployments/test/clusters/cluster1/nodes/node_1 number_of_nodes='2' manage_vxfencing='false' heartbeats_MACs='{"eth3": "08:00:27:21:7D:BC", "eth2": "08:00:27:06:C0:61"}' hostname='mn1' clust_type='sfha' cluster_name='cluster1' fencing_dg_name='null' cluster_ID='1' managment_MAC='{"eth0": "08:00:27:5B:C1:3F"}' cluster_UUID='16f764c0-8637-3668-a788-33d313f8ea20' license_key='ENTERPRISE' hostnames='{"1": "mn3", "0": "mn4", "3": "mn1"}' rpm_list='VRTSveki VRTSperl VRTSvlic VRTSspt VRTSvxvm VRTSaslapm VRTSvxfs VRTSfssdk VRTSllt VRTSgab VRTSvxfen VRTSamf VRTSpython VRTSvcs VRTSvcsag VRTSvcsea VRTSdbed VRTSodm VRTSsfmh VRTSvbs VRTSvcswiz VRTSsfcpi VRTSglm VRTScavf VRTSgms' base_os='rhel6' heartbeats_SAPs='{}' management_SAP='{}' boot_mode='bios'
+assertConfigTask mn3 vcs::configure cluster1 /deployments/test/clusters/cluster1/nodes/node_3 number_of_nodes='2' manage_vxfencing='false' heartbeats_MACs='{"eth3": "08:00:27:21:7D:B3", "eth2": "08:00:27:06:C0:63"}' hostname='mn3' clust_type='sfha' cluster_name='cluster1' fencing_dg_name='null' cluster_ID='1' managment_MAC='{"eth0": "08:00:27:5B:C1:32"}' cluster_UUID='16f764c0-8637-3668-a788-33d313f8ea20' license_key='ENTERPRISE' hostnames='{"1": "mn3", "0": "mn4", "3": "mn1"}' rpm_list='VRTSveki VRTSperl VRTSvlic VRTSspt VRTSvxvm VRTSaslapm VRTSvxfs VRTSfssdk VRTSllt VRTSgab VRTSvxfen VRTSamf VRTSpython VRTSvcs VRTSvcsag VRTSvcsea VRTSdbed VRTSodm VRTSsfmh VRTSvbs VRTSvcswiz VRTSsfcpi VRTSglm VRTScavf VRTSgms' base_os='rhel6' heartbeats_SAPs='{}' management_SAP='{}' boot_mode='bios'
+assertConfigTask mn4 vcs::configure cluster1 /deployments/test/clusters/cluster1/nodes/node_4 number_of_nodes='2' manage_vxfencing='false' heartbeats_MACs='{"eth3": "08:00:27:21:7D:B4", "eth2": "08:00:27:06:C0:64"}' hostname='mn4' clust_type='sfha' cluster_name='cluster1' fencing_dg_name='null' cluster_ID='1' managment_MAC='{"eth0": "08:00:27:5B:C1:33"}' cluster_UUID='16f764c0-8637-3668-a788-33d313f8ea20' license_key='ENTERPRISE' hostnames='{"1": "mn3", "0": "mn4", "3": "mn1"}' rpm_list='VRTSveki VRTSperl VRTSvlic VRTSspt VRTSvxvm VRTSaslapm VRTSvxfs VRTSfssdk VRTSllt VRTSgab VRTSvxfen VRTSamf VRTSpython VRTSvcs VRTSvcsag VRTSvcsea VRTSdbed VRTSodm VRTSsfmh VRTSvbs VRTSvcswiz VRTSsfcpi VRTSglm VRTScavf VRTSgms' base_os='rhel6' heartbeats_SAPs='{}' management_SAP='{}' boot_mode='bios'
+
+litp run_plan
+

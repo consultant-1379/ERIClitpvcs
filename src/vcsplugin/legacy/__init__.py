@@ -1,0 +1,1 @@
+from vcsplugin.legacy.vcs_network_resource import LegacyVcsNetworkResource

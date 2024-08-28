@@ -1,0 +1,9 @@
+# AT for testing if a device name exists within a node network interface.
+
+runLitpScript cluster_common.atlib
+
+litp create -p /deployments/test/clusters/cluster1/nodes/node_1/network_interfaces/nic_4 -t network-interface -o ipaddress=10.10.10.108 network_name=mgmt
+
+let __validation_error --err_type ValidationError --err_message 'Create plan failed: The interface type "network-interface" is not allowed in a VCS cluster. Allowed interface types are eth or bridge or vlan or bond' --err_vpath /deployments/test/clusters/cluster1/nodes/node_1/network_interfaces/nic_4
+
+assertError __validation_error create_plan

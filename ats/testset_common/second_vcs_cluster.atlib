@@ -1,0 +1,22 @@
+litp create -p /deployments/test/clusters/cluster2                                          -t vcs-cluster      -o cluster_type=sfha llt_nets="heartbeat1,heartbeat2" low_prio_net="mgmt" cluster_id="2"
+
+# Setup Cluster2, Node1
+litp create -p /deployments/test/clusters/cluster2/nodes/node_1                             -t node             -o hostname=mn3
+litp inherit -p /deployments/test/clusters/cluster2/nodes/node_1/system                     -s              /infrastructure/systems/system_1
+litp inherit -p /deployments/test/clusters/cluster2/nodes/node_1/routes/default             -s              /infrastructure/networking/routes/def
+litp inherit -p /deployments/test/clusters/cluster2/nodes/node_1/storage_profile            -s              /infrastructure/storage/storage_profiles/profile_1
+litp inherit -p /deployments/test/clusters/cluster2/nodes/node_1/os                         -s              /software/profiles/rhel_6_4
+litp create -p /deployments/test/clusters/cluster2/nodes/node_1/network_interfaces/nic_0  -t eth              -o device_name=eth0 macaddress=08:00:27:5B:C1:3F network_name=mgmt ipaddress=10.10.10.101
+litp create -p /deployments/test/clusters/cluster2/nodes/node_1/network_interfaces/nic_2  -t eth              -o device_name=eth2 macaddress=08:00:27:06:C0:61 network_name=heartbeat1
+litp create -p /deployments/test/clusters/cluster2/nodes/node_1/network_interfaces/nic_3  -t eth              -o device_name=eth3 macaddress=08:00:27:21:7D:BC network_name=heartbeat2
+
+
+# Setup Cluster2, Node2
+litp create -p /deployments/test/clusters/cluster2/nodes/node_2                             -t node             -o hostname=mn4
+litp inherit -p /deployments/test/clusters/cluster2/nodes/node_2/system                     -s              /infrastructure/systems/system_2
+litp inherit -p /deployments/test/clusters/cluster2/nodes/node_2/routes/default             -s              /infrastructure/networking/routes/def
+litp inherit -p /deployments/test/clusters/cluster2/nodes/node_2/storage_profile            -s              /infrastructure/storage/storage_profiles/profile_1
+litp inherit -p /deployments/test/clusters/cluster2/nodes/node_2/os                         -s              /software/profiles/rhel_6_4
+litp create -p /deployments/test/clusters/cluster2/nodes/node_2/network_interfaces/nic_0  -t eth              -o device_name=eth0 macaddress=08:00:27:5B:C1:31 network_name=mgmt ipaddress=10.10.10.102
+litp create -p /deployments/test/clusters/cluster2/nodes/node_2/network_interfaces/nic_2  -t eth              -o device_name=eth2 macaddress=08:00:27:06:C0:62 network_name=heartbeat1
+litp create -p /deployments/test/clusters/cluster2/nodes/node_2/network_interfaces/nic_3  -t eth              -o device_name=eth3 macaddress=08:00:27:21:7D:B3 network_name=heartbeat2

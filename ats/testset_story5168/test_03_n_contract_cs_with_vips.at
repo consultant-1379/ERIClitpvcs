@@ -1,0 +1,35 @@
+# test_03_n_contract_cs_with_vips.at (AT)
+
+# Description: Validate against a user trying to remove a node from the node list with attached VIPs.
+#
+# Steps:
+#
+# 1. Create a two node parallel VCS CS with 2 VIPs
+# 2. Remove node from node list
+# 3. Create Plan
+# 4. Validation Error should be received
+#
+
+# Prerequisite - LITP Deployment
+runLitpScript ../cluster_common.atlib
+
+# 1. Create a two node parallel VCS CS with 2 VIPs
+#
+litp create -t service -p /software/services/mock -o service_name=mocklsb
+litp create -t vcs-clustered-service -p /deployments/test/clusters/cluster1/services/cs1 -o name="cs1" active=2 standby=0 node_list="node_1,node_2"
+litp inherit -s /software/services/mock -p /deployments/test/clusters/cluster1/services/cs1/applications/mock
+# Create 2 vips for service group
+litp create -p /deployments/test/clusters/cluster1/services/cs1/ipaddresses/ip1 -t vip -o network_name='mgmt' ipaddress='10.10.10.155'
+litp create -p /deployments/test/clusters/cluster1/services/cs1/ipaddresses/ip2 -t vip -o network_name='mgmt' ipaddress='10.10.10.156'
+
+litp create_plan
+litp run_plan
+
+# 2. Remove node from node list
+litp update -p /deployments/test/clusters/cluster1/services/cs1 -o active=1 standby=0 node_list="node_1"
+
+
+# 3/4. Validation Error should be received
+let __node_list_err --errors_length 1 --err_vpath /deployments/test/clusters/cluster1/services/cs1 --err_type ValidationError  --err_message 'Removal of nodes from node_list of service containing VIPs is not supported.'
+assertError __node_list_err create_plan
+

@@ -1,0 +1,40 @@
+# test_06_n_add_vips_network_for_removal
+#
+# Description :
+# Update a Service group and try to remove the network interface referenced in the vip
+#
+# Steps:
+# 1. Remove a network interface from both nodes
+# 2. Add 2 vips to a PL SG which reference the network
+# 3. Ensure validation
+
+runLitpScript ../cluster_common.atlib
+
+# Create PL service group on node_1 and node_2
+litp create -t service -p /software/services/mock -o service_name='mocklsb'
+litp create -t vcs-clustered-service -p /deployments/test/clusters/cluster1/services/cs1/ -o name="cs1" standby=0 active=2 node_list="node_1,node_2"
+litp inherit -s /software/services/mock -p /deployments/test/clusters/cluster1/services/cs1/applications/mock
+
+# Create new network
+litp create -p /infrastructure/networking/networks/traffic4 -t network -o name=traffic4 subnet=10.10.11.0/24
+
+# Create new network interfaces
+litp create -t eth -p /deployments/test/clusters/cluster1/nodes/node_1/network_interfaces/nic_4 -o device_name=eth4 macaddress=08:00:27:04:01:82 network_name='traffic4'
+litp create -t eth -p /deployments/test/clusters/cluster1/nodes/node_2/network_interfaces/nic_4 -o device_name=eth4 macaddress=08:00:27:04:01:82 network_name='traffic4'
+
+litp create_plan
+litp run_plan
+
+# 1. Remove a network interface from both nodes
+litp remove -p /deployments/test/clusters/cluster1/nodes/node_1/network_interfaces/nic_4
+litp remove -p /deployments/test/clusters/cluster1/nodes/node_2/network_interfaces/nic_4
+
+# 2. Add 2 vips to a PL SG which reference the network
+litp create -p /deployments/test/clusters/cluster1/services/cs1/ipaddresses/ip1 -t vip -o network_name='traffic4' ipaddress='10.10.11.101'
+litp create -p /deployments/test/clusters/cluster1/services/cs1/ipaddresses/ip2 -t vip -o network_name='traffic4' ipaddress='10.10.11.102'
+
+let __err_1 --err_type ValidationError --err_message 'Create plan failed: This interface is in use by /deployments/test/clusters/cluster1/services/cs1/ipaddresses/ip1, /deployments/test/clusters/cluster1/services/cs1/ipaddresses/ip2' --err_vpath /deployments/test/clusters/cluster1/nodes/node_1/network_interfaces/nic_4
+let __err_2 --err_type ValidationError --err_message 'Create plan failed: This interface is in use by /deployments/test/clusters/cluster1/services/cs1/ipaddresses/ip1, /deployments/test/clusters/cluster1/services/cs1/ipaddresses/ip2' --err_vpath /deployments/test/clusters/cluster1/nodes/node_2/network_interfaces/nic_4
+
+# 3. Ensure validation
+assertError __err_1 __err_2 --errors_length 2 create_plan

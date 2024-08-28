@@ -1,0 +1,60 @@
+# test_07_p_xml_add_vips_sg_no_vips
+#
+# Description:
+# Update a Service Group with no vips applied using xml. Test for both Failover and Parallel, and with ipv4 and ipv6
+#
+# Steps:
+# 1. Add 1 ipv4 vip and 1 ipv6 vip to a FO service group (with no vips) using xml
+# 2. Add 2 ipv4 vips and 2 ipv6 vips to a PL service group (with no vips) using xml
+# 3. Create and run plan
+
+runLitpScript ../cluster_common.atlib
+
+# Create FO service
+litp create -t service -p /software/services/mockFO -o service_name='mockFO'
+litp create -t vcs-clustered-service -p /deployments/test/clusters/cluster1/services/cs1/ -o name="cs1" standby=1 active=1 node_list="node_1,node_2"
+litp inherit -s /software/services/mockFO -p /deployments/test/clusters/cluster1/services/cs1/applications/mock
+
+# Create PL service
+litp create -t service -p /software/services/mockPL -o service_name='mockPL'
+litp create -t vcs-clustered-service -p /deployments/test/clusters/cluster1/services/cs2/ -o name="cs2" standby=0 active=2 node_list="node_1,node_2"
+litp inherit -s /software/services/mockPL -p /deployments/test/clusters/cluster1/services/cs2/applications/mock
+
+litp create_plan
+litp run_plan
+
+# VIPS for the FO service
+litp create -t vip -p /deployments/test/clusters/cluster1/services/cs1/ipaddresses/ip1 -o network_name='mgmt' ipaddress='10.10.10.155'
+litp create -t vip -p /deployments/test/clusters/cluster1/services/cs1/ipaddresses/ip2 -o network_name='mgmt' ipaddress='2001:abcd:ef::1/64'
+
+# VIPS for the PL service
+litp create -t vip -p /deployments/test/clusters/cluster1/services/cs2/ipaddresses/ip1 -o network_name='mgmt' ipaddress='10.10.10.156'
+litp create -t vip -p /deployments/test/clusters/cluster1/services/cs2/ipaddresses/ip2 -o network_name='mgmt' ipaddress='10.10.10.157'
+litp create -t vip -p /deployments/test/clusters/cluster1/services/cs2/ipaddresses/ip3 -o network_name='mgmt' ipaddress='2001:abcd:ef::2/64'
+litp create -t vip -p /deployments/test/clusters/cluster1/services/cs2/ipaddresses/ip4 -o network_name='mgmt' ipaddress='2001:abcd:ef::3/64'
+
+litp create_plan
+
+# Export to XML
+litp export -p /deployments/test/clusters/cluster1/services/cs1/ipaddresses -f vips_cs1_test_07.xml
+litp export -p /deployments/test/clusters/cluster1/services/cs2/ipaddresses -f vips_cs2_test_07.xml
+
+# Remove from model
+litp remove -p /deployments/test/clusters/cluster1/services/cs1/ipaddresses/ip1
+litp remove -p /deployments/test/clusters/cluster1/services/cs1/ipaddresses/ip2
+litp remove -p /deployments/test/clusters/cluster1/services/cs2/ipaddresses/ip1
+litp remove -p /deployments/test/clusters/cluster1/services/cs2/ipaddresses/ip2
+litp remove -p /deployments/test/clusters/cluster1/services/cs2/ipaddresses/ip3
+litp remove -p /deployments/test/clusters/cluster1/services/cs2/ipaddresses/ip4
+
+# Remove plan
+litp remove_plan
+
+# 1. Add 1 ipv4 vip and 1 ipv6 vip to a FO service group (with no vips) using xml
+# 2. Add 2 ipv4 vips and 2 ipv6 vips to a PL service group (with no vips) using xml
+litp load -p /deployments/test/clusters/cluster1/services/cs1/ -f vips_cs1_test_07.xml --merge
+litp load -p /deployments/test/clusters/cluster1/services/cs2/ -f vips_cs2_test_07.xml --merge
+
+# 3. Create and run plan
+litp create_plan
+litp run_plan

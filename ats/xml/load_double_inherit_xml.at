@@ -1,0 +1,1 @@
+litp load -p / -f storage_profile_double_inherit.xml --merge

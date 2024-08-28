@@ -1,0 +1,32 @@
+runLitpScript cluster_common.atlib
+
+litp create -p /infrastructure/networking/networks/skynets_revenge -t network -o name=skynets_revenge subnet=100.100.101.0/24
+litp create -p /infrastructure/networking/networks/skynet -t network -o name=skynet subnet=100.100.100.0/24
+
+litp create -p /deployments/test/clusters/cluster1/nodes/node_1/network_interfaces/nic_4  -t eth -o device_name=eth4 macaddress=08:00:27:21:7D:B2 network_name=skynet ipaddress=100.100.100.101
+litp create -p /deployments/test/clusters/cluster1/nodes/node_2/network_interfaces/nic_4  -t eth -o device_name=eth4 macaddress=08:00:27:21:7D:B1 network_name=skynet ipaddress=100.100.100.100
+litp create -p /deployments/test/clusters/cluster1/nodes/node_1/network_interfaces/nic_5  -t eth -o device_name=eth5 macaddress=08:00:27:21:7D:B2 network_name=skynets_revenge ipaddress=100.100.101.101
+litp create -p /deployments/test/clusters/cluster1/nodes/node_2/network_interfaces/nic_5  -t eth -o device_name=eth5 macaddress=08:10:27:21:7D:B2 network_name=skynets_revenge ipaddress=100.100.101.102
+
+litp create -t vcs-network-host -p /deployments/test/clusters/cluster1/network_hosts/net3 -o network_name="skynets_revenge" ip="100.100.101.103"
+litp create -t vcs-network-host -p /deployments/test/clusters/cluster1/network_hosts/net1 -o network_name="skynet" ip="100.100.100.102"
+litp create -t vcs-network-host -p /deployments/test/clusters/cluster1/network_hosts/net2 -o network_name="skynet" ip="100.100.100.103"
+
+litp create_plan
+litp run_plan
+
+litp remove -p /deployments/test/clusters/cluster1/network_hosts/net1
+litp remove -p /deployments/test/clusters/cluster1/network_hosts/net2
+litp remove -p /deployments/test/clusters/cluster1/network_hosts/net3
+
+litp create_plan
+
+assertCallbackTask callback_method /deployments/test/clusters/cluster1/nodes/node_1/network_interfaces/nic_4 callback_class=VCSNICServiceGroupUpdateHelper callback_func=update_network_hosts resource=Res_NIC_cluster1_eth4 sys=mn1 addresses='[]'
+
+assertCallbackTask callback_method /deployments/test/clusters/cluster1/nodes/node_2/network_interfaces/nic_4 callback_func=update_network_hosts callback_class=VCSNICServiceGroupUpdateHelper resource=Res_NIC_cluster1_eth4 sys=mn2 addresses='[]'
+
+assertCallbackTask callback_method /deployments/test/clusters/cluster1/nodes/node_1/network_interfaces/nic_5 callback_class=VCSNICServiceGroupUpdateHelper callback_func=update_network_hosts resource=Res_NIC_cluster1_eth5 sys=mn1 addresses='[]'
+
+assertCallbackTask callback_method /deployments/test/clusters/cluster1/nodes/node_2/network_interfaces/nic_5 callback_class=VCSNICServiceGroupUpdateHelper callback_func=update_network_hosts resource=Res_NIC_cluster1_eth5 sys=mn2 addresses='[]'
+
+litp run_plan

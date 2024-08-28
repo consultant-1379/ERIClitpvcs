@@ -1,0 +1,18 @@
+runLitpScript infrastructure.atlib
+runLitpScript node1.atlib
+runLitpScript node2.atlib
+runLitpScript node3.atlib
+runLitpScript node4.atlib
+add-plugins facter_mock_plugin_1234
+
+litp create_plan
+litp run_plan
+
+litp remove -p /deployments/test/clusters/cluster1/nodes/node_1
+litp remove -p /deployments/test/clusters/cluster1/nodes/node_2
+litp remove -p /deployments/test/clusters/cluster1/nodes/node_3
+litp remove -p /deployments/test/clusters/cluster1/nodes/node_4
+runLitpScript node5.atlib
+
+assertError --err_message 'Create plan failed: Removing all nodes from cluster "cluster1" is not supported.' create_plan
+

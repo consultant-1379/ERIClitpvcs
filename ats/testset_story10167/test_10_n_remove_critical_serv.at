@@ -1,0 +1,20 @@
+# Test Case 10.
+
+# Ensures that if the litp remove command is used to 'remove' a vcs critical service that any future commands referencing
+# that removed service item shoud have a suitable validation error generated. (Could be run as an AT)
+
+# 1. Create a "vcs-cluster" with "critical_service" item.
+runLitpScript ../testset_common/common.atlib
+litp update -p /deployments/test/clusters/cluster1 -o cluster_type=sfha
+
+litp create -t service -p /software/services/mock -o service_name='mocklsb'
+litp create -t vcs-clustered-service -p /deployments/test/clusters/cluster1/services/cs1/ -o name="cs1" standby=1 active=1 node_list="node_1,node_2"
+litp inherit -s /software/services/mock -p /deployments/test/clusters/cluster1/services/cs1/applications/mock
+litp create_plan
+litp run_plan
+
+litp update -p /deployments/test/clusters/cluster1 -o critical_service='cs1'
+
+# 2. Remove the critical service, create plan and assert for Validation Error message.
+litp remove -p /deployments/test/clusters/cluster1/services/cs1
+assertError --err_message 'The vcs-clustered-service "cs1" cannot be removed as it is a critical service.' --err_vpath /deployments/test/clusters/cluster1/services/cs1 create_plan

@@ -1,0 +1,21 @@
+# Prerequisite - LITP deployment
+runLitpScript ../cluster_common.atlib
+runLitpScript ../add_2_nodes_to_cluster.atlib
+
+# 1. Create failover service group CS1
+litp create -t vcs-clustered-service -p /deployments/test/clusters/cluster1/services/CS1 -o name=cs1 active=1 standby=1 node_list=node_1,node_2
+litp create -t service -p /software/services/service01 -o service_name=service01
+litp inherit -s /software/services/service01 -p /deployments/test/clusters/cluster1/services/CS1/applications/service01
+
+litp create_plan
+litp run_plan
+
+# 2. Update CS1 property and create service group CS2 that deactivates CS1
+litp update -p /deployments/test/clusters/cluster1/services/CS1 -o online_timeout=240
+
+litp create -t vcs-clustered-service -p /deployments/test/clusters/cluster1/services/CS2 -o name=cs2 active=1 standby=1 node_list=node_3,node_4 deactivates=CS1
+litp inherit -s /software/services/service01 -p /deployments/test/clusters/cluster1/services/CS2/applications/service01
+
+# 3. Assert error on create_plan
+let __err1 --err_type ValidationError --err_vpath /deployments/test/clusters/cluster1/services/CS2 --err_message 'deactivates property cannot reference a vcs-clustered-service that is not in Applied state.'
+assertError --errors_length 1 __err1 create_plan

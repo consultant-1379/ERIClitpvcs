@@ -1,0 +1,21 @@
+# Prerequisite - LITP deployment
+runLitpScript ../cluster_common.atlib
+runLitpScript ../add_2_nodes_to_cluster.atlib
+
+# 1. Create 2 failover service groups
+litp create -t vcs-clustered-service -p /deployments/test/clusters/cluster1/services/CS1 -o name=cs1 active=1 standby=1 node_list=node_1,node_2
+litp create -t service -p /software/services/service01 -o service_name=service01
+litp inherit -s /software/services/service01 -p /deployments/test/clusters/cluster1/services/CS1/applications/service01
+
+litp create -t vcs-clustered-service -p /deployments/test/clusters/cluster1/services/CS2 -o name=cs2 active=1 standby=1 node_list=node_3,node_4
+litp create -t service -p /software/services/service02 -o service_name=service02
+litp inherit -s /software/services/service02 -p /deployments/test/clusters/cluster1/services/CS2/applications/service02
+
+litp create_plan
+litp run_plan
+
+# 2. Update CS2 to deactivate CS1
+litp update -p /deployments/test/clusters/cluster1/services/CS2 -o deactivates=CS1
+
+let __err1 --err_type ValidationError --err_vpath /deployments/test/clusters/cluster1/services/CS2 --err_message 'Cannot set deactivates property on a vcs-clustered-service that is not in Initial state.'
+assertError __err1 create_plan

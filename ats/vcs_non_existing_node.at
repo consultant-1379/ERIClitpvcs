@@ -1,0 +1,19 @@
+# AT to Extend a vcs clustered service that contains a service from a single
+# parallel to 2 nodes parallel when the count of nodes is less than updated.
+
+runLitpScript cluster_common.atlib
+
+litp create -t vcs-clustered-service -p /deployments/test/clusters/cluster1/services/cs1 -o name="httpd" active=1 standby=0 node_list="node_1"
+
+litp create -p /infrastructure/networking/networks/skynet -t network -o name=skynet subnet=100.100.100.0/24
+litp create -t service -p /software/services/service1 -o service_name=service1
+
+litp inherit -p /deployments/test/clusters/cluster1/services/cs1/applications/service1 -s /software/services/service1
+
+litp create_plan
+litp run_plan
+
+litp update -p /deployments/test/clusters/cluster1/services/cs1 -o active=2 standby=0 name="httpd" online_timeout=45 node_list="node_1"
+
+assertError --err_type ValidationError --err_message 'Create plan failed: Number of nodes must match active plus standby' create_plan
+

@@ -1,0 +1,20 @@
+runLitpScript ../../cluster_common.atlib
+
+# Create PL service with no VIPS
+litp create -t service -p /software/services/mockPL -o service_name='mockPL'
+litp create -t vcs-clustered-service -p /deployments/test/clusters/cluster1/services/cs1/ -o name="cs1" standby=0 active=1 node_list="node_1"
+litp inherit -s /software/services/mockPL -p /deployments/test/clusters/cluster1/services/cs1/applications/mock
+
+litp create_plan
+litp run_plan
+
+# Expand service
+litp update -p /deployments/test/clusters/cluster1/services/cs1 -o active=2 node_list="node_1,node_2"
+
+# New VIPS - number of VIPS per node will not be the same as before expansion
+litp create -t vip -p /deployments/test/clusters/cluster1/services/cs1/ipaddresses/ip1 -o network_name='mgmt' ipaddress='10.10.10.156'
+litp create -t vip -p /deployments/test/clusters/cluster1/services/cs1/ipaddresses/ip2 -o network_name='mgmt' ipaddress='10.10.10.157'
+
+let __err_1 --err_type ValidationError --err_message 'The number of "IPv4" VIP items per node for network "mgmt" in vcs-clustered-service "cs1" must be the same after change of active property from "1" to "2".' --err_vpath /deployments/test/clusters/cluster1/services/cs1
+
+assertError __err_1 --errors_length 1 create_plan

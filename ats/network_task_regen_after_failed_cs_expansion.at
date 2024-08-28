@@ -1,0 +1,104 @@
+runLitpScript cluster_common.atlib
+
+litp create -p /infrastructure/networking/networks/skynet -t network -o name=skynet subnet=100.100.100.0/24
+litp create -p /infrastructure/networking/networks/prism -t network -o name=prism subnet=100.100.200.0/24
+litp create -p /infrastructure/networking/networks/project6 -t network -o name=project6 subnet=100.200.100.0/24
+
+litp create -p /deployments/test/clusters/cluster1/nodes/node_1/network_interfaces/nic_4  -t eth -o device_name=eth4 macaddress=08:00:27:21:7D:B2 network_name=skynet ipaddress=100.100.100.100
+litp create -p /deployments/test/clusters/cluster1/nodes/node_2/network_interfaces/nic_4  -t eth -o device_name=eth4 macaddress=08:00:27:21:7D:B1 network_name=skynet ipaddress=100.100.100.101
+
+litp create -p /deployments/test/clusters/cluster1/nodes/node_1/network_interfaces/nic_5  -t eth -o device_name=eth5 macaddress=08:00:27:31:7D:B2 network_name=prism ipaddress=100.100.200.100
+litp create -p /deployments/test/clusters/cluster1/nodes/node_2/network_interfaces/nic_5  -t eth -o device_name=eth5 macaddress=08:00:27:31:7D:B1 network_name=prism ipaddress=100.100.200.101
+
+litp create -p /deployments/test/clusters/cluster1/nodes/node_1/network_interfaces/nic_6  -t eth -o device_name=eth6 macaddress=08:00:27:31:7D:B2 network_name=project6 ipaddress=100.200.100.100
+litp create -p /deployments/test/clusters/cluster1/nodes/node_2/network_interfaces/nic_6  -t eth -o device_name=eth6 macaddress=08:00:27:31:7D:B1 network_name=project6 ipaddress=100.200.100.101
+
+litp create -t service -p /software/services/mocklsb -o service_name=mocklsb
+
+litp create -t vcs-clustered-service -p /deployments/test/clusters/cluster1/services/mock -o active=1 standby=0 node_list=node_1 name=mock
+
+litp inherit -s /software/services/mocklsb -p /deployments/test/clusters/cluster1/services/mock/applications/mock
+
+litp create -t vip -p /deployments/test/clusters/cluster1/services/mock/ipaddresses/vip_skynet1 -o network_name=skynet ipaddress=100.100.100.200
+litp create -t vip -p /deployments/test/clusters/cluster1/services/mock/ipaddresses/vip_prism1 -o network_name=prism ipaddress=100.100.200.200
+litp create -t vip -p /deployments/test/clusters/cluster1/services/mock/ipaddresses/vip_project1 -o network_name=project6 ipaddress=100.200.100.200
+
+
+litp create_plan
+litp run_plan
+
+# Expand clustered-service
+litp update -p /deployments/test/clusters/cluster1/services/mock -o active=2 standby=0 node_list=node_1,node_2
+litp create -t vip -p /deployments/test/clusters/cluster1/services/mock/ipaddresses/vip_skynet2 -o network_name=skynet ipaddress=100.100.100.201
+litp create -t vip -p /deployments/test/clusters/cluster1/services/mock/ipaddresses/vip_prism2 -o network_name=prism ipaddress=100.100.200.201
+litp create -t vip -p /deployments/test/clusters/cluster1/services/mock/ipaddresses/vip_project2 -o network_name=project6 ipaddress=100.200.100.201
+
+litp create_plan
+# Check we have tasks for:
+# prism
+assertCallbackTask callback_method /deployments/test/clusters/cluster1/services/mock/ipaddresses/vip_prism2 callback_func=vip_callback network_name=prism
+
+# project6
+assertCallbackTask callback_method /deployments/test/clusters/cluster1/services/mock/ipaddresses/vip_project2 callback_func=vip_callback network_name=project6
+
+# skynet
+assertCallbackTask callback_method /deployments/test/clusters/cluster1/services/mock/ipaddresses/vip_skynet2 callback_func=vip_callback network_name=skynet
+
+# Fail the project6 task
+failCallbackTask callback_method /deployments/test/clusters/cluster1/services/mock/ipaddresses/vip_project2
+
+litp run_plan
+
+# Check clustered service is updated
+assertState -p /deployments/test/clusters/cluster1/services/mock Updated
+
+# Check node1 vips applied
+assertState -p /deployments/test/clusters/cluster1/services/mock/ipaddresses/vip_prism1 Applied
+assertState -p /deployments/test/clusters/cluster1/services/mock/ipaddresses/vip_project1 Applied
+assertState -p /deployments/test/clusters/cluster1/services/mock/ipaddresses/vip_skynet1 Applied
+# Check node2 vips initial after failed task
+assertState -p /deployments/test/clusters/cluster1/services/mock/ipaddresses/vip_prism2 Initial
+assertState -p /deployments/test/clusters/cluster1/services/mock/ipaddresses/vip_project2 Initial
+assertState -p /deployments/test/clusters/cluster1/services/mock/ipaddresses/vip_skynet2 Initial
+
+# Check node1 vips are determinable
+assertAppliedPropertiesDeterminable -p /deployments/test/clusters/cluster1/services/mock/ipaddresses/vip_prism1 True
+assertAppliedPropertiesDeterminable -p /deployments/test/clusters/cluster1/services/mock/ipaddresses/vip_project1 True
+assertAppliedPropertiesDeterminable -p /deployments/test/clusters/cluster1/services/mock/ipaddresses/vip_skynet1 True
+
+# Check node2 prism and project6 vips are not determinable
+assertAppliedPropertiesDeterminable -p /deployments/test/clusters/cluster1/services/mock/ipaddresses/vip_prism2 False
+assertAppliedPropertiesDeterminable -p /deployments/test/clusters/cluster1/services/mock/ipaddresses/vip_project2 False
+# Check node2 skynet vip is still determinable
+assertAppliedPropertiesDeterminable -p /deployments/test/clusters/cluster1/services/mock/ipaddresses/vip_skynet2 True
+
+# Recreate the plan
+litp create_plan
+# Check skynet and project6 tasks are regenerated
+assertCallbackTask callback_method /deployments/test/clusters/cluster1/services/mock/ipaddresses/vip_project2 callback_func=vip_callback network_name=project6
+assertCallbackTask callback_method /deployments/test/clusters/cluster1/services/mock/ipaddresses/vip_skynet2 callback_func=vip_callback network_name=skynet
+
+# Check prism1 task doesn't regenerate
+assertNoCallbackTask callback_method /deployments/test/clusters/cluster1/services/mock/ipaddresses/vip_prism1 callback_func=vip_callback
+# Check prism2 task does regenerate
+assertCallbackTask callback_method /deployments/test/clusters/cluster1/services/mock/ipaddresses/vip_prism2 callback_func=vip_callback
+litp run_plan
+
+# Check clustered service is appied
+assertState -p /deployments/test/clusters/cluster1/services/mock Applied
+
+# Check all vips applied
+assertState -p /deployments/test/clusters/cluster1/services/mock/ipaddresses/vip_prism1 Applied
+assertState -p /deployments/test/clusters/cluster1/services/mock/ipaddresses/vip_project1 Applied
+assertState -p /deployments/test/clusters/cluster1/services/mock/ipaddresses/vip_skynet1 Applied
+assertState -p /deployments/test/clusters/cluster1/services/mock/ipaddresses/vip_prism2 Applied
+assertState -p /deployments/test/clusters/cluster1/services/mock/ipaddresses/vip_project2 Applied
+assertState -p /deployments/test/clusters/cluster1/services/mock/ipaddresses/vip_skynet2 Applied
+
+# Check all vips are determinable
+assertAppliedPropertiesDeterminable -p /deployments/test/clusters/cluster1/services/mock/ipaddresses/vip_prism1 True
+assertAppliedPropertiesDeterminable -p /deployments/test/clusters/cluster1/services/mock/ipaddresses/vip_project1 True
+assertAppliedPropertiesDeterminable -p /deployments/test/clusters/cluster1/services/mock/ipaddresses/vip_skynet1 True
+assertAppliedPropertiesDeterminable -p /deployments/test/clusters/cluster1/services/mock/ipaddresses/vip_prism2 True
+assertAppliedPropertiesDeterminable -p /deployments/test/clusters/cluster1/services/mock/ipaddresses/vip_project2 True
+assertAppliedPropertiesDeterminable -p /deployments/test/clusters/cluster1/services/mock/ipaddresses/vip_skynet2 True

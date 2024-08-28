@@ -1,0 +1,63 @@
+runLitpScript cluster_common.atlib
+
+litp create -t vcs-clustered-service -p /deployments/test/clusters/cluster1/services/cs1 -o name="httpd" active=1 standby=1 node_list="node_1,node_2"
+litp create -t lsb-runtime           -p /deployments/test/clusters/cluster1/services/cs1/runtimes/apache -o service_name=httpd
+
+
+# Positive 1: Creating one service group should work, use lsb-runtime type
+litp create_plan
+#clean up
+litp remove -p /deployments/test/clusters/cluster1/services/cs1
+
+#Postive 2: Creating one service group should work, use service type
+litp create -t vcs-clustered-service -p /deployments/test/clusters/cluster1/services/cs1 -o name="httpd" active=1 standby=1 node_list="node_1,node_2"
+litp create -t service -p /software/services/service1 -o service_name=httpd
+litp inherit -p /deployments/test/clusters/cluster1/services/cs1/applications/service1 -s /software/services/service1
+
+litp create_plan
+
+#clean up
+litp remove -p /deployments/test/clusters/cluster1/services/cs1
+litp remove -p /software/services/service1
+
+
+#Negative 1: Legacy scenario with lsb-runtime only, 2 runtimes starting the same service in two different vcs-clustered-services
+litp create -t vcs-clustered-service -p /deployments/test/clusters/cluster1/services/cs1 -o name="httpd" active=1 standby=1 node_list="node_1,node_2"
+litp create -t lsb-runtime           -p /deployments/test/clusters/cluster1/services/cs1/runtimes/apache -o service_name=httpd
+litp create -t vcs-clustered-service -p /deployments/test/clusters/cluster1/services/cs2 -o name=apache active=1 standby=1 node_list="node_1,node_2"
+litp create -t lsb-runtime           -p /deployments/test/clusters/cluster1/services/cs2/runtimes/webserver -o service_name=httpd
+
+assertError --err_message "Cluster services cs1 and cs2, on cluster cluster1, both attempt to start service httpd on nodes: mn1, mn2" create_plan
+
+#clean up
+litp remove -p /deployments/test/clusters/cluster1/services/cs1
+litp remove -p /deployments/test/clusters/cluster1/services/cs2
+
+#Negative 2: Old lsb_runtime type and new service type, try to start the same service in two different vcs-clustered-services
+litp create -t vcs-clustered-service -p /deployments/test/clusters/cluster1/services/cs1 -o name="httpd" active=1 standby=1 node_list="node_1,node_2"
+litp create -t lsb-runtime           -p /deployments/test/clusters/cluster1/services/cs1/runtimes/apache -o service_name=httpd
+
+litp create -t vcs-clustered-service -p /deployments/test/clusters/cluster1/services/cs2 -o name=apache active=1 standby=1 node_list="node_1,node_2"
+litp create -t service -p /software/services/service1 -o service_name=httpd
+litp inherit -p /deployments/test/clusters/cluster1/services/cs2/applications/service1 -s /software/services/service1
+
+assertError --err_message "Cluster services cs1 and cs2, on cluster cluster1, both attempt to start service httpd on nodes: mn1, mn2" create_plan
+#clean up
+litp remove -p /deployments/test/clusters/cluster1/services/cs1
+litp remove -p /deployments/test/clusters/cluster1/services/cs2
+
+
+#Negative 3: Try to start the same new service type in two different vcs-clustered-services
+litp create -t vcs-clustered-service -p /deployments/test/clusters/cluster1/services/cs1 -o name="httpd" active=1 standby=1 node_list="node_1,node_2"
+litp inherit -p /deployments/test/clusters/cluster1/services/cs1/applications/service1 -s /software/services/service1
+
+litp create -t vcs-clustered-service -p /deployments/test/clusters/cluster1/services/cs2 -o name=apache active=1 standby=1 node_list="node_1,node_2"
+litp inherit -p /deployments/test/clusters/cluster1/services/cs2/applications/service1 -s /software/services/service1
+
+let __err_fs --err_message 'Create plan failed: Cluster services cs1 and cs2, on cluster cluster1, both attempt to start service httpd on nodes: mn1, mn2' --err_type ValidationError  --err_vpath '/deployments/test/clusters/cluster1'
+assertError __err_fs create_plan
+
+#clean up
+litp remove -p /deployments/test/clusters/cluster1/services/cs1
+litp remove -p /deployments/test/clusters/cluster1/services/cs2
+

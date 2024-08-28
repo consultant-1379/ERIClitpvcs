@@ -1,0 +1,56 @@
+######################################################
+# TORF-360177:
+#     remove_dependent_and_depending_cluster_seperately
+# Description:
+#     Test to verify a user can remove a vcs cluster that has a dependency
+#     on another cluster, and at a later stage remove the depending cluster.
+# Steps:
+#     Create three seperate clusters - cluster1, cluster2, cluster3
+#     Allow cluster3 to have a dependency on cluster2
+#     Remove cluster3
+#     Create Plan/ Run Plan
+#     Remove cluster2
+#     Create Plan/ Run Plan
+#     Ensure the plan is successful
+# Result:
+#     Cluster with a dependency must be removed before the depending cluster is
+######################################################
+
+# Prerequisite - LITP deployment
+
+runLitpScript ../cluster_common.atlib
+runLitpScript ../add_second_and_third_clusters_with_dependencies.atlib
+
+# Remove depending cluster
+litp remove -p /deployments/test/clusters/cluster3
+litp remove -p /infrastructure/systems/system_5
+litp remove -p /infrastructure/systems/system_6
+litp remove -p /infrastructure/storage/storage_profiles/profile_3
+
+# Create and run plan
+litp create_plan
+litp run_plan
+
+# Check items have been removed
+assertPlanState successful
+assertError --err_type InvalidLocationError --err_message 'Not found' show -p /deployments/test/clusters/cluster3
+assertError --err_type InvalidLocationError --err_message 'Not found' show -p /infrastructure/systems/system_5
+assertError --err_type InvalidLocationError --err_message 'Not found' show -p /infrastructure/systems/system_6
+assertError --err_type InvalidLocationError --err_message 'Not found' show -p /infrastructure/storage/storage_profiles/profile_3
+
+# Remove dependent cluster
+litp remove -p /deployments/test/clusters/cluster2
+litp remove -p /infrastructure/systems/system_3
+litp remove -p /infrastructure/systems/system_4
+litp remove -p /infrastructure/storage/storage_profiles/profile_2
+
+# Create and run plan
+litp create_plan
+litp run_plan
+
+# Check items have been removed
+assertPlanState successful
+assertError --err_type InvalidLocationError --err_message 'Not found' show -p /deployments/test/clusters/cluster2
+assertError --err_type InvalidLocationError --err_message 'Not found' show -p /infrastructure/systems/system_3
+assertError --err_type InvalidLocationError --err_message 'Not found' show -p /infrastructure/systems/system_4
+assertError --err_type InvalidLocationError --err_message 'Not found' show -p /infrastructure/storage/storage_profiles/profile_2

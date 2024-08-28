@@ -1,0 +1,40 @@
+# Test Case 02.
+
+# Test to verify that if a user removes two clustered services that have dependencies,
+# the dependent VCS clustered service must be removed first,
+# if it is not then the user should see a validation error.
+
+# 1. Define VCS service groups that have a dependency on another VCS clustered service.
+
+runLitpScript ../testset_common/common.atlib
+
+litp create -t service -p /software/services/mock1 -o service_name='mocklsb1'
+
+litp create -t service -p /software/services/mock2 -o service_name='mocklsb2'
+
+litp create -t vcs-clustered-service -p /deployments/test/clusters/cluster1/services/cs1 -o name="cs1" standby=0 active=1 node_list="node_1"
+litp inherit -s /software/services/mock1 -p /deployments/test/clusters/cluster1/services/cs1/applications/mock
+
+litp create -t vcs-clustered-service -p /deployments/test/clusters/cluster1/services/cs2 -o name="cs2" standby=0 active=1 node_list="node_1" dependency_list="cs1"
+litp inherit -s /software/services/mock2 -p /deployments/test/clusters/cluster1/services/cs2/applications/mock
+
+
+litp create_plan
+
+litp run_plan
+
+# 2. Remove dependent VCS Service Group then the non-dependent VCS Clustered Service.
+
+litp remove -p /deployments/test/clusters/cluster1/services/cs1
+
+litp remove -p /deployments/test/clusters/cluster1/services/cs2
+
+# 3. Create/Run Plan
+
+litp create_plan
+
+litp run_plan
+
+# 4. Wait for successful completion.
+
+assertPlanState successful

@@ -1,0 +1,16 @@
+runLitpScript cluster_common.atlib
+
+litp create_plan
+litp run_plan
+
+litp create -t service -p /software/services/mock -o service_name='mocklsb'
+
+litp create -t vcs-clustered-service -p /deployments/test/clusters/cluster1/services/cs1/ -o name="cs1" standby=0 active=2 node_list="node_1,node_2"
+
+litp inherit -s /software/services/mock -p /deployments/test/clusters/cluster1/services/cs1/applications/mock
+
+litp create_plan
+
+assertCallbackTask callback_method /deployments/test/clusters/cluster1/services/cs1/applications/mock callback_func=cb_create_app callback_class=ApplicationResource 
+# This next fragment should be on the assertCallbackTask line, but it's difficult to figure out how to express lists in args to callback tasks
+# vpaths='["/deployments/test/clusters/cluster1", "/deployments/test/clusters/cluster1/services/cs1", "/deployments/test/clusters/cluster1/services/cs1/applications/mock"]'

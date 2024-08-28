@@ -1,0 +1,18 @@
+#  Test that a dependency_list is not specified in the ha-service-config
+#  item of a multi-node parallel vcs-clustered-service.
+
+# Prerequisite - LITP Deployment
+runLitpScript ../testset_common/common.atlib
+
+# 1. Create a two node parallel service group
+litp create -t vcs-clustered-service -p /deployments/test/clusters/cluster1/services/CS1 -o name=id_vm2 active=2 standby=0 node_list=node_1,node_2
+
+# 2. Create 1 service and inherit it into the vcs-clustered-service
+litp create -t service -p /software/services/service01 -o service_name=serv1
+litp inherit -s /software/services/service01 -p /deployments/test/clusters/cluster1/services/CS1/applications/service01
+
+# 3. Create a ha-service-config for the service
+litp create -t ha-service-config -p /deployments/test/clusters/cluster1/services/CS1/ha_configs/vm_hc -o service_id=service01 -o dependency_list=whatever
+
+let __err_type --err_message 'A dependency_list property can only be specified for the ha-service-config item in a failover or a one node parallel vcs-clustered-service.' --err_vpath /deployments/test/clusters/cluster1/services/CS1/ha_configs/vm_hc
+assertError __err_type create_plan

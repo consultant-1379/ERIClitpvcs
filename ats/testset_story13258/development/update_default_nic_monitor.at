@@ -1,0 +1,12 @@
+runLitpScript ../../cluster_common.atlib
+
+litp create_plan
+litp run_plan
+
+litp update -p /deployments/test/clusters/cluster1 -o default_nic_monitor="mii"
+
+litp create_plan
+litp run_plan
+
+assertCallbackTask callback_method /deployments/test/clusters/cluster1/nodes/node_1/network_interfaces/nic_0 callback_func=update_network_hosts callback_class=VCSNICServiceGroupUpdateHelper resource=Res_NIC_cluster1_eth0 sys=mn1 mii='1'
+assertCallbackTask callback_method /deployments/test/clusters/cluster1/nodes/node_2/network_interfaces/nic_0 callback_func=update_network_hosts callback_class=VCSNICServiceGroupUpdateHelper resource=Res_NIC_cluster1_eth0 sys=mn2 mii='1'

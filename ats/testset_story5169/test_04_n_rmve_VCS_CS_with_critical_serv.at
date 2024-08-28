@@ -1,0 +1,26 @@
+# Test Case 04.
+
+# Test to verify that when a user tries to remove a VCS clustered service that has a critical service dependency,
+# the user should see a validation error
+
+# 1. Define VCS service groups that have a dependency on a critical service.
+runLitpScript ../testset_common/common.atlib
+litp update -p /deployments/test/clusters/cluster1 -o cluster_type=sfha
+
+litp create -t service -p /software/services/mock -o service_name='mocklsb'
+litp create -t vcs-clustered-service -p /deployments/test/clusters/cluster1/services/cs1/ -o name="cs1" standby=1 active=1 node_list="node_1,node_2"
+litp inherit -s /software/services/mock -p /deployments/test/clusters/cluster1/services/cs1/applications/mock
+litp create_plan
+litp run_plan
+
+litp update -p /deployments/test/clusters/cluster1 -o critical_service='cs1'
+litp create -t service -p /software/services/mock1 -o service_name='mocklsb1'
+litp create -t vcs-clustered-service -p /deployments/test/clusters/cluster1/services/cs2/ -o name="cs2" standby=0 active=1 node_list="node_1"
+litp inherit -s /software/services/mock1 -p /deployments/test/clusters/cluster1/services/cs2/applications/mock1 
+
+litp create_plan
+litp run_plan
+
+# 2. Remove the critical service, create plan and assert for Validation Error message.
+litp remove -p /deployments/test/clusters/cluster1/services/cs1
+assertError --err_message 'The vcs-clustered-service "cs1" cannot be removed as it is a critical service.' --errors_length 1 --err_vpath /deployments/test/clusters/cluster1/services/cs1 create_plan

@@ -1,0 +1,38 @@
+# AT to test dependency with expansion and contraction of a parallel cluster service.
+
+
+#Primary setup is two service groups with CS2 having a dependencing on CS1.
+
+runLitpScript ../../cluster_common.atlib
+runLitpScript ../../add_4_nodes_to_cluster.atlib
+
+litp create -t service -p /software/services/mock -o service_name='mocklsb'
+litp create -t vcs-clustered-service -p /deployments/test/clusters/cluster1/services/cs1 -o name="cs1" standby=0 active=2 node_list="node_1,node_2" dependency_list=""
+litp inherit -s /software/services/mock -p /deployments/test/clusters/cluster1/services/cs1/applications/mock
+
+litp create -t service -p /software/services/mock1 -o service_name='mocklsb2'
+litp create -t vcs-clustered-service -p /deployments/test/clusters/cluster1/services/cs2 -o name="cs2" standby=0 active=2 node_list="node_1,node_2" dependency_list="cs1"
+litp inherit -s /software/services/mock1 -p /deployments/test/clusters/cluster1/services/cs2/applications/mock
+
+litp create_plan
+litp run_plan
+
+#--------------------------------------------------------------------------------------------------------
+# Update the node list for both services with node_2, node_3 and node_4.  Node_1 will get removed
+
+litp update -p /deployments/test/clusters/cluster1/services/cs1 -o active=3 node_list="node_2,node_3,node_4"
+litp update -p /deployments/test/clusters/cluster1/services/cs2 -o active=3 node_list="node_2,node_3,node_4"
+
+litp create_plan
+assertCallbackTask callback_method /deployments/test/clusters/cluster1/services/cs1 callback_func=online_callback callback_class=VcsSGOnlineHelper vcs_grp_name=Grp_CS_cluster1_cs1
+assertCallbackTask callback_method /deployments/test/clusters/cluster1/services/cs2 callback_func=online_callback callback_class=VcsSGOnlineHelper vcs_grp_name=Grp_CS_cluster1_cs2
+litp run_plan
+
+#--------------------------------------------------------------------------------------------------------
+#Break the dependency link and just update CS2 with node_1 added and node_3,node_4 removed
+
+litp update -p /deployments/test/clusters/cluster1/services/cs2 -o dependency_list="" node_list="node_2,node_1" active=2
+litp create_plan
+assertCallbackTask callback_method /deployments/test/clusters/cluster1/services/cs2 callback_func=online_callback callback_class=VcsSGOnlineHelper vcs_grp_name=Grp_CS_cluster1_cs2
+litp run_plan
+

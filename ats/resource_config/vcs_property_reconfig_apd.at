@@ -1,0 +1,46 @@
+# Make sure that the APD flags are set for evertyhing when updating.
+runLitpScript ../cluster_common.atlib
+
+litp create -t vcs-clustered-service -p /deployments/test/clusters/cluster1/services/cs1 -o name="cs1" active=1 standby=1 node_list="node_1,node_2" offline_timeout=300
+
+litp create -t service -p /software/services/mock1 -o service_name=mocklsb1
+litp create -t service -p /software/services/mock2 -o service_name=mocklsb2
+
+litp inherit -s /software/services/mock1 -p /deployments/test/clusters/cluster1/services/cs1/applications/mock1
+litp inherit -s /software/services/mock2 -p /deployments/test/clusters/cluster1/services/cs1/applications/mock2
+
+litp create -p /deployments/test/clusters/cluster1/services/cs1/ha_configs/service_config1 -t ha-service-config -o restart_limit="5" startup_retry_limit="5" service_id="mock1" fault_on_monitor_timeouts="6" tolerance_limit="1" clean_timeout="90"
+litp create -p /deployments/test/clusters/cluster1/services/cs1/ha_configs/service_config2 -t ha-service-config -o restart_limit="5" startup_retry_limit="5" service_id="mock2" fault_on_monitor_timeouts="6" tolerance_limit="1" clean_timeout="90"
+
+litp create_plan
+litp run_plan
+assertPlanState successful
+
+litp update -p /deployments/test/clusters/cluster1/services/cs1 -o offline_timeout=120
+assertState -p /deployments/test/clusters/cluster1/services/cs1 Updated
+assertAppliedPropertiesDeterminable -p /deployments/test/clusters/cluster1/services/cs1 True
+assertAppliedPropertiesDeterminable -p /deployments/test/clusters/cluster1/services/cs1/applications/mock1 True
+assertAppliedPropertiesDeterminable -p /deployments/test/clusters/cluster1/services/cs1/applications/mock2 True
+
+litp create_plan
+
+failCallbackTask callback_method /deployments/test/clusters/cluster1/services/cs1/applications/mock1
+
+litp run_plan
+assertPlanState failed
+
+assertAppliedPropertiesDeterminable -p /deployments/test/clusters/cluster1/services/cs1 False
+assertAppliedPropertiesDeterminable -p /deployments/test/clusters/cluster1/services/cs1/applications/mock1 False
+assertAppliedPropertiesDeterminable -p /deployments/test/clusters/cluster1/services/cs1/applications/mock2 True
+
+
+litp update -p /deployments/test/clusters/cluster1/services/cs1 -o offline_timeout=300
+litp create_plan
+assertCallbackTask callback_method /deployments/test/clusters/cluster1/services/cs1/applications/mock2 callback_func="cb_update_app_before_lock"
+assertCallbackTask callback_method /deployments/test/clusters/cluster1/services/cs1/applications/mock1 callback_func="cb_update_app_before_lock"
+assertCallbackTask callback_method /deployments/test/clusters/cluster1/services/cs1 callback_func="install_callback"
+assertCallbackTask callback_method /deployments/test/clusters/cluster1/services/cs1 callback_func="online_callback"
+
+
+
+assertProperty /deployments/test/clusters/cluster1/services/cs1 -o offline_timeout=300

@@ -1,0 +1,24 @@
+runLitpScript cluster_common_with_sg.atlib
+
+# Negative1: create ipv6 vip with network that does not exist:
+litp create -p /deployments/test/clusters/cluster1/services/CS1/runtimes/APP1/ipaddresses/ip6_1 -t vip -o  ipaddress='2001:abcd:ef::10/64'  network_name='mgmt_dummy'
+
+assertError --err_message "A matching 'mgmt_dummy' network must be defined in" create_plan
+litp remove -p /deployments/test/clusters/cluster1/services/CS1/runtimes/APP1/ipaddresses/ip6_1
+
+# Negative2: create ipv6 vip with wrong prefixleng:
+# full string comparison in the error message cannot be performed due to exception formatting coming from netaddr lib.
+assertError --err_message "is not valid" create -p /deployments/test/clusters/cluster1/services/CS1/runtimes/APP1/ipaddresses/ip6_1 -t vip -o  ipaddress='2001:abcd:ef::10/640'  network_name='mgmt'
+assertError --err_message "is not valid" create -p /deployments/test/clusters/cluster1/services/CS1/runtimes/APP1/ipaddresses/ip6_1 -t vip -o  ipaddress='2001:abcd:ef::10/a'  network_name='mgmt'
+assertError --err_message "is not valid" create -p /deployments/test/clusters/cluster1/services/CS1/runtimes/APP1/ipaddresses/ip6_1 -t vip -o  ipaddress='2001:abcd:ef::10/'  network_name='mgmt'
+
+# Positive1: create ipv6 vip with no prefixleng:
+litp create -p /deployments/test/clusters/cluster1/services/CS1/runtimes/APP1/ipaddresses/ip6_0 -t vip -o  ipaddress='2001:abcd:ef::10'  network_name='mgmt'
+
+# Positive2: create ipv6 vips for failoverAPP1 and parallelAPP2:
+litp create -p /deployments/test/clusters/cluster1/services/CS1/runtimes/APP1/ipaddresses/ip6_1 -t vip -o  ipaddress='2001:abcd:ef::10/64'  network_name='mgmt'
+
+litp create -p /deployments/test/clusters/cluster1/services/CS2/runtimes/APP2/ipaddresses/ip6_1 -t vip -o  ipaddress='2001:abcd:ef::1/64'  network_name='mgmt'
+litp create -p /deployments/test/clusters/cluster1/services/CS2/runtimes/APP2/ipaddresses/ip6_2 -t vip -o  ipaddress='2001:abcd:ef::2/64'  network_name='mgmt'
+
+litp create_plan

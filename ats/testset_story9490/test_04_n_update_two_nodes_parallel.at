@@ -1,0 +1,36 @@
+# Test Case 4
+
+# To ensure that it is not possible to specify, and deploy, a
+# vcs-clustered-services containing 2 multiple services in single parallel
+# mode(1:0) and update it to two in parallel(2:0).
+
+# Prerequisite - LITP deployment
+runLitpScript ../cluster_common.atlib
+
+# 1. Create a one node service group
+litp create -t vcs-clustered-service -p /deployments/test/clusters/cluster1/services/CS1 -o name=cs1 active=1 standby=0 node_list=node_1
+
+# 2 Create the services
+litp create -t service -p /software/services/service00 -o service_name=service00
+litp create -t service -p /software/services/service01 -o service_name=service01
+
+# 3. Inherit the services to the one node service group
+litp inherit -s /software/services/service00 -p /deployments/test/clusters/cluster1/services/CS1/applications/service00
+litp inherit -s /software/services/service01 -p /deployments/test/clusters/cluster1/services/CS1/applications/service01
+
+# 4. Create ha-service-configs for the services
+litp create -t ha-service-config -p /deployments/test/clusters/cluster1/services/CS1/ha_configs/s00 -o service_id=service00
+litp create -t ha-service-config -p /deployments/test/clusters/cluster1/services/CS1/ha_configs/s01 -o service_id=service01
+
+# 5. Create and run plan
+litp create_plan
+litp run_plan
+
+# 6. Update service group to two node parallel
+litp update -p /deployments/test/clusters/cluster1/services/CS1 -o active=2 standby=0 node_list=node_1,node_2
+
+# 7. Verify validation error on create plan with more than 1 app on parallel
+#    service group upgraded to two nodes
+let __err_type1 --err_message "Multiple services are only supported in a failover or a one node parallel vcs-clustered-service." --err_vpath /deployments/test/clusters/cluster1/services/CS1
+let __err_type2 --err_message 'Number of ha-service-config items defined for vcs-clustered-service "cs1" exceeds maximum number of 1' --err_vpath /deployments/test/clusters/cluster1/services/CS1
+assertError __err_type1 __err_type2 --errors_length 2 create_plan

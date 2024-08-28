@@ -1,0 +1,17 @@
+runLitpScript ../cluster_common.atlib
+
+# Verify that update task is created in the plan for ha-service-config create
+litp create -t service -p /software/services/s1 -o service_name=httpd
+litp create -t vcs-clustered-service -p /deployments/test/clusters/cluster1/services/cs1 -o active=1 standby=0 name='cs1' online_timeout=310 offline_timeout=320 node_list='node_1'
+litp inherit -p /deployments/test/clusters/cluster1/services/cs1/applications/s1 -s /software/services/s1
+litp create_plan
+litp run_plan
+
+litp create -p /deployments/test/clusters/cluster1/services/cs1/ha_configs/service_config -t ha-service-config -o restart_limit="5" startup_retry_limit="5" service_id="s1" fault_on_monitor_timeouts="6" tolerance_limit="1" clean_timeout="90" status_interval="15" status_timeout=60
+litp create_plan
+assertCallbackTask callback_method /deployments/test/clusters/cluster1/services/cs1/applications/s1 callback_func=cb_update_app_before_lock callback_class=ApplicationResource
+
+assertProperty /deployments/test/clusters/cluster1/services/cs1/ha_configs/service_config -o status_interval=15
+assertProperty /deployments/test/clusters/cluster1/services/cs1/ha_configs/service_config -o restart_limit=5
+assertProperty /deployments/test/clusters/cluster1/services/cs1/ha_configs/service_config -o startup_retry_limit=5
+assertProperty /deployments/test/clusters/cluster1/services/cs1/ha_configs/service_config -o status_timeout=60

@@ -1,0 +1,24 @@
+# Assert Tasks are as expected for removal and locking in plan
+
+runLitpScript ../testset_common/cluster_common_four_node.atlib
+
+litp create -t service -p /software/services/mock1 -o service_name='mocklsb1'
+litp create -t vcs-clustered-service -p /deployments/test/clusters/cluster1/services/cs1/ -o name="cs1" standby=0 active=3 node_list="node_1,node_2,node_3"
+litp inherit -s /software/services/mock1 -p /deployments/test/clusters/cluster1/services/cs1/applications/mock
+
+litp create_plan
+litp run_plan
+
+litp update -p /deployments/test/clusters/cluster1/services/cs1/ -o node_list="node_1,node_3,node_4"
+
+litp create_plan
+
+# Removal tasks will come prior to lock tasks.
+# Addition tasks are after node lock phase and there are no tasks to lock/unlock tasks for node that remains in node_list.
+
+let __task_contraction_cs1 CallbackTask callback_method /deployments/test/clusters/cluster1/services/cs1 callback_func=contraction_callback callback_class=VcsServiceGroupHelper
+let __task_update_cs1 CallbackTask callback_method /deployments/test/clusters/cluster1/services/cs1 callback_func=update_callback callback_class=VcsServiceGroupHelper
+let __task_online_cs1 CallbackTask callback_method /deployments/test/clusters/cluster1/services/cs1 callback_func=online_callback callback_class=VcsSGOnlineHelper
+
+assertTaskBeforeTask __task_contraction_cs1 __task_update_cs1
+assertTaskBeforeTask __task_update_cs1 __task_online_cs1

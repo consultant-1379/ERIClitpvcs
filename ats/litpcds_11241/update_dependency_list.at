@@ -1,0 +1,35 @@
+runLitpScript ../cluster_common.atlib
+
+# Create cs1
+litp create -t service -p /software/services/mock -o service_name='mocklsb'
+litp create -t vcs-clustered-service -p /deployments/test/clusters/cluster1/services/cs1/ -o name="cs1" standby=0 active=2 node_list="node_1,node_2"
+litp inherit -s /software/services/mock -p /deployments/test/clusters/cluster1/services/cs1/applications/mock
+
+# Create cs2
+litp create -t service -p /software/services/mock2 -o service_name='mocklsb2'
+litp create -t vcs-clustered-service -p /deployments/test/clusters/cluster1/services/cs2/ -o name="cs2" standby=0 active=2 node_list="node_1,node_2"
+litp inherit -s /software/services/mock2 -p /deployments/test/clusters/cluster1/services/cs2/applications/mock2
+
+# Create cs4
+litp create -t service -p /software/services/mock4 -o service_name='mocklsb4'
+litp create -t vcs-clustered-service -p /deployments/test/clusters/cluster1/services/cs4 -o name="cs4" standby=0 active=2 node_list="node_1,node_2"
+litp inherit -s /software/services/mock4 -p /deployments/test/clusters/cluster1/services/cs4/applications/mock4
+
+litp create_plan
+litp run_plan
+
+
+# Update CS2 to depend on CS1 and CS4
+litp update -p /deployments/test/clusters/cluster1/services/cs2/ -o dependency_list=cs1,cs4
+
+litp create_plan
+
+
+assertCallbackTask callback_method /deployments/test/clusters/cluster1/services/cs2 callback_func=update_dependencies_callback callback_class=VcsServiceGroupHelper service_vpath=/deployments/test/clusters/cluster1/services/cs2 cluster_item_id=cluster1 service_group_name='Grp_CS_cluster1_cs2'
+
+litp run_plan
+
+# Make sure that changing the order of the dependencies in the dependency_list does not lead to a new task
+litp update -p /deployments/test/clusters/cluster1/services/cs2/ -o dependency_list=cs4,cs1
+
+assertError --err_type DoNothingPlanError --err_message "Create plan failed: no tasks were generated" create_plan

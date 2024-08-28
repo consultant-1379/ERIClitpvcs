@@ -1,0 +1,80 @@
+##############
+# This AT is for development testing
+#
+# Goal: check if, during a cluster expansion, a previously
+#       set (to value valid for the new number of nodes)
+#       vcs_seed_threshold property of vcs-cluster item
+#       is preserved.
+#
+# Scenario:
+#       Inherited from testset_common/cluster_common_four_node.atlib
+#       Set vcs_seed_threshold to 1.
+#
+# Actions:
+#       Remove a new node from the cluster and set
+#       vcs_seed_threshold property
+#
+
+####
+# Bulding the scenario
+#
+assertNoPlan
+add-plugins patch_mco_agent
+runLitpScript cluster_common.atlib
+litp create_plan
+litp run_plan
+
+
+####
+# Check built scenario
+#
+assertPlanState successful
+assertPropertyUnset -p /deployments/test/clusters/cluster1 -o vcs_seed_threshold
+assertState -p /deployments/test/clusters/cluster1 Applied
+
+####
+# Actions
+#
+
+#
+# Set vcs_seed_threshold to the number of nodes
+#
+litp update -p /deployments/test/clusters/cluster1 -o vcs_seed_threshold='1'
+litp create_plan
+litp run_plan
+
+assertPlanState successful
+assertProperty /deployments/test/clusters/cluster1 -o vcs_seed_threshold='1'
+assertState -p /deployments/test/clusters/cluster1 Applied
+
+#
+# Expand the cluster to have 3 nodes
+#
+litp create -t system -p /infrastructure/systems/system_3 -o system_name=MN3VM
+
+litp create -t disk -p /infrastructure/systems/system_3/disks/disk0 -o name=hd0 size=56G bootable=true uuid=c29d5a97a382bbc3564dd03019
+
+litp create -t node -p /deployments/test/clusters/cluster1/nodes/node_3 -o hostname=mn3 node_id=3
+
+litp inherit -p /deployments/test/clusters/cluster1/nodes/node_3/system -s /infrastructure/systems/system_3
+litp inherit -p /deployments/test/clusters/cluster1/nodes/node_3/os -s /software/profiles/rhel_6_4
+litp inherit -p /deployments/test/clusters/cluster1/nodes/node_3/routes/default -s /infrastructure/networking/routes/def
+litp inherit -p /deployments/test/clusters/cluster1/nodes/node_3/storage_profile -s /infrastructure/storage/storage_profiles/profile_1
+
+litp create -t eth -p /deployments/test/clusters/cluster1/nodes/node_3/network_interfaces/nic_0 -o device_name=eth0 macaddress=08:00:27:5B:C1:9F network_name=mgmt ipaddress=10.10.10.103
+litp create -t eth -p /deployments/test/clusters/cluster1/nodes/node_3/network_interfaces/nic_2 -o device_name=eth2 macaddress=08:00:27:06:C0:91 network_name=heartbeat1
+litp create -t eth -p /deployments/test/clusters/cluster1/nodes/node_3/network_interfaces/nic_3 -o device_name=eth3 macaddress=08:00:27:21:7D:DC network_name=heartbeat2
+
+litp create_plan
+
+#####
+# Run plan
+#
+litp run_plan
+
+#####
+# Post-run Checks
+#
+assertPlanState successful
+assertProperty /deployments/test/clusters/cluster1 -o vcs_seed_threshold='1'
+assertState -p /deployments/test/clusters/cluster1 Applied

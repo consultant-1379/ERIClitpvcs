@@ -1,0 +1,33 @@
+# test_07_n_contract_vcs_ps_dep_from_vcs_ps.at (AT)
+#
+# Description: Validate if a user has a two nodes parallel VCS clustered service with depending two nodes parallel service,
+# that they cannot contract some of the CS
+#
+# Steps:
+#
+# 1. Create a two nodes PS type VCS CS which is depending from another service in same configuration.
+# 2. Update node list with VCS CS to remove a node from one of the parallel CS
+# 3. Expect validation error to be received on create plan
+#
+
+# Prerequisite - LITP Deployment
+runLitpScript ../cluster_common.atlib
+
+# 1. Create a FO type VCS CS which is depending from two nodes parallel VCS CS
+litp create -t service -p /software/services/mock1 -o service_name=mocklsb
+litp create -t vcs-clustered-service -p /deployments/test/clusters/cluster1/services/cs1 -o name="cs1" active=2 standby=0 node_list="node_1,node_2"
+litp inherit -s /software/services/mock1 -p /deployments/test/clusters/cluster1/services/cs1/applications/mock1
+
+litp create -t service -p /software/services/httpd -o service_name=httpd
+litp create -t vcs-clustered-service -p /deployments/test/clusters/cluster1/services/cs2 -o name="cs2" active=2 standby=0 node_list="node_1,node_2" dependency_list="cs1"
+litp inherit -s /software/services/httpd -p /deployments/test/clusters/cluster1/services/cs2/applications/httpd
+
+litp create_plan
+litp run_plan
+
+# 2. Update node list with VCS CS to remove a node from the parallel CS
+litp update -p /deployments/test/clusters/cluster1/services/cs1 -o active=1 standby=0 node_list="node_1"
+
+# 3. Expect validation error to be received on create plan
+let __node_list_err --errors_length 1 --err_vpath /deployments/test/clusters/cluster1/services/cs2 --err_type ValidationError  --err_message 'The dependency "cs1" is a one node vcs-clustered-service. Only a one node vcs-clustered-service with the same node_list can depend on a one node vcs-clustered-service.'
+assertError __node_list_err create_plan

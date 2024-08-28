@@ -1,0 +1,24 @@
+# Test Case 11.
+
+# Test to verify that LITP plan will fail to create when we create a filesystem within a CS that already contains LSB-runtime item
+
+# Prerequisite - LITP Deployment
+runLitpScript ../cluster_common.atlib
+
+litp create -t storage-profile -p /infrastructure/storage/storage_profiles/vx_sp -o volume_driver='vxvm'
+litp create -t volume-group    -p /infrastructure/storage/storage_profiles/vx_sp/volume_groups/vxvg1 -o volume_group_name='vx_dg'
+litp create -t file-system    -p /infrastructure/storage/storage_profiles/vx_sp/volume_groups/vxvg1/file_systems/versant_fs -o mount_point='/opt/ericsson/nms/versant' type="vxfs" size=100G snap_size=0
+litp create -t physical-device -p /infrastructure/storage/storage_profiles/vx_sp/volume_groups/vxvg1/physical_devices/lun0 -o device_name='lun0'
+litp inherit -p /deployments/test/clusters/cluster1/storage_profile/vx_sp -s /infrastructure/storage/storage_profiles/vx_sp
+
+# Create a vcs clustered service and lsb runtime and inherit the filesystem to the vcs clustered service
+litp create -t vcs-clustered-service -p /deployments/test/clusters/cluster1/services/cs1 -o name="versant_listener" active=1 standby=1 node_list="node_1,node_2"
+litp create -t lsb-runtime -p /deployments/test/clusters/cluster1/services/cs1/runtimes/versant -o name='versantd' service_name='versantd'
+litp inherit -p /deployments/test/clusters/cluster1/services/cs1/filesystems/versant_mount -s /deployments/test/clusters/cluster1/storage_profile/vx_sp/volume_groups/vxvg1/file_systems/versant_fs
+
+# Validation should fail if we try to inherit a filesystem to a clustered service that already contains an lsb-runtime
+let __err --err_message 'Create plan failed: Filesystems may not be referenced under /deployments/test/clusters/cluster1/services/cs1/filesystems without a corresponding service in /deployments/test/clusters/cluster1/services/cs1/applications.' --err_vpath /deployments/test/clusters/cluster1/services/cs1/filesystems/versant_mount --err_type ValidationError
+let __errtoo --err_message 'Create plan failed: Filesystem /deployments/test/clusters/cluster1/storage_profile/vx_sp/volume_groups/vxvg1/file_systems/versant_fs is not used in any vcs-clustered-service' --err_vpath /deployments/test/clusters/cluster1/storage_profile/vx_sp/volume_groups/vxvg1/file_systems/versant_fs --err_type ValidationError
+
+assertError __err create_plan
+assertError __errtoo create_plan

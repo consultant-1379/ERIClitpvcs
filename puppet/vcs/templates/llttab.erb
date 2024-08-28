@@ -1,0 +1,27 @@
+set-node <%= @hostname %>
+set-cluster <%= @cluster_ID %>
+<% if !@heartbeats_MACs.empty? -%>
+<% @heartbeats_MACs.each_pair do |interface, mac| -%>
+<% if mac != 'None' -%>
+link <%= interface %> <%= interface %>-<%= mac %> - ether - -
+<% else -%>
+link <%= interface %> <%= interface %> - ether - -
+<% end -%>
+<% end -%>
+
+<% @managment_MAC.each_pair do |interface, mac| -%>
+<% if mac != 'None' -%>
+link-lowpri <%= interface %> <%= interface %>-<%= mac %> - ether - -
+<% else -%>
+link-lowpri <%= interface %> <%= interface %> - ether - -
+<% end -%>
+<% end -%>
+
+<% elsif !@heartbeats_SAPs.empty? -%>
+<% @heartbeats_SAPs.each_pair do |interface, sap| -%>
+link <%= interface %> <%= interface %> - ether <%= sap %> -
+<% end -%>
+<% @management_SAP.each_pair do |interface, sap| -%>
+link-lowpri <%= interface %> <%= interface %> - ether <%= sap %> -
+<% end -%>
+<% end -%>

@@ -1,0 +1,35 @@
+###############################################################
+#       Description: Test to verify if a user defines multiple
+#       services under a single clustered service and tries define
+#       service_id in a vcs trigger they should see a validation
+#       error
+#
+#       Steps:
+#               1. Create VCS SG with multiple services inherited and a
+#               vcs trigger with service_id referring to one of the
+#               inherited services
+#               2.Create/ Run Plan
+#               3.Assert validation error is received
+#
+###############################################################
+
+runLitpScript ../cluster_common.atlib
+
+# Step 1: Create VCS SG with multiple services inherited and a vcs trigger with service_id referring to one of the inherited services
+
+litp create -t service -p /software/services/mock -o service_name='mocklsb'
+litp create -t service -p /software/services/mock2 -o service_name='mocklsb2'
+litp create -t vcs-clustered-service -p /deployments/test/clusters/cluster1/services/cs1/ -o name="cs1" standby=1 active=1 node_list="node_1,node_2"
+
+litp inherit -s /software/services/mock -p /deployments/test/clusters/cluster1/services/cs1/applications/mock
+litp inherit -s /software/services/mock2 -p /deployments/test/clusters/cluster1/services/cs1/applications/mock2
+
+litp create -p /deployments/test/clusters/cluster1/services/cs1/ha_configs/mock -t ha-service-config -o service_id="mock"
+litp create -p /deployments/test/clusters/cluster1/services/cs1/ha_configs/mock2 -t ha-service-config -o service_id="mock2"
+
+litp create -t vcs-trigger -p /deployments/test/clusters/cluster1/services/cs1/triggers/trig1 -o trigger_type=postonline service_id=mock service_argument="argument"
+
+# Step 2: Assert Error Message
+let __err1 --err_type ValidationError --err_message 'Create plan failed: Property "service_id" is not supported for postonline trigger type.' --err_vpath /deployments/test/clusters/cluster1/services/cs1/triggers/trig1
+let __err2 --err_type ValidationError --err_message 'Create plan failed: Property "service_argument" is not supported for postonline trigger type.' --err_vpath /deployments/test/clusters/cluster1/services/cs1/triggers/trig1
+assertError __err1 __err2 create_plan

@@ -1,0 +1,25 @@
+# Test case to test the maximum number of network hosts being held on traffic2 network
+# Steps 
+#	Deploy a cluster with 10 local NetworkHosts on the same traffic network
+#	Run create_plan
+#	Make sure the plan was created successfully
+
+runLitpScript ../cluster_common.atlib
+
+litp create -p /infrastructure/networking/networks/traffic2 -t network -o name=traffic2 subnet=192.168.200.0/24
+litp create -p /deployments/test/clusters/cluster1/nodes/node_1/network_interfaces/nic_5 -t eth -o device_name=eth5 macaddress=08:00:27:21:7D:25 network_name=traffic2 ipaddress=192.168.200.2
+litp create -p /deployments/test/clusters/cluster1/nodes/node_2/network_interfaces/nic_5 -t eth -o device_name=eth5 macaddress=08:00:27:21:7D:5D network_name=traffic2 ipaddress=192.168.200.4
+
+litp create -t vcs-network-host -p /deployments/test/clusters/cluster1/network_hosts/network_host_1 -o network_name=traffic2 ip=192.168.200.16
+litp create -t vcs-network-host -p /deployments/test/clusters/cluster1/network_hosts/network_host_2 -o network_name=traffic2 ip=192.168.200.26
+litp create -t vcs-network-host -p /deployments/test/clusters/cluster1/network_hosts/network_host_3 -o network_name=traffic2 ip=192.168.200.36
+litp create -t vcs-network-host -p /deployments/test/clusters/cluster1/network_hosts/network_host_4 -o network_name=traffic2 ip=192.168.200.46
+litp create -t vcs-network-host -p /deployments/test/clusters/cluster1/network_hosts/network_host_5 -o network_name=traffic2 ip=192.168.200.56
+litp create -t vcs-network-host -p /deployments/test/clusters/cluster1/network_hosts/network_host_6 -o network_name=traffic2 ip=192.168.200.66
+litp create -t vcs-network-host -p /deployments/test/clusters/cluster1/network_hosts/network_host_7 -o network_name=traffic2 ip=192.168.200.76
+litp create -t vcs-network-host -p /deployments/test/clusters/cluster1/network_hosts/network_host_8 -o network_name=traffic2 ip=192.168.200.86
+litp create -t vcs-network-host -p /deployments/test/clusters/cluster1/network_hosts/network_host_9 -o network_name=traffic2 ip=192.168.200.96
+litp create -t vcs-network-host -p /deployments/test/clusters/cluster1/network_hosts/network_host_10 -o network_name=traffic2 ip=192.168.200.106
+
+litp create_plan
+litp run_plan

@@ -1,0 +1,27 @@
+runLitpScript ../cluster_common.atlib
+
+litp create -t vcs-clustered-service -p /deployments/test/clusters/cluster1/services/apachecs -o active=1 standby=1 name=vcs1 online_timeout=200 offline_timeout=200 node_list=node_1,node_2
+litp create -t package -p /software/items/pkg1 -o name=httpd.x86_64
+litp create -t service -p /software/services/service1 -o service_name=httpd cleanup_command=/opt/ericsson/cleanup_apache.sh
+litp inherit -p /deployments/test/clusters/cluster1/services/apachecs/applications/service1 -s /software/services/service1
+litp create -t ha-service-config -p /deployments/test/clusters/cluster1/services/apachecs/ha_configs/service1_conf -o status_interval=10 status_timeout=10 restart_limit=5 startup_retry_limit=2 tolerance_limit=2 fault_on_monitor_timeouts=2 clean_timeout=100 service_id=service1
+litp inherit -p /software/services/service1/packages/pkg1 -s /software/items/pkg1
+litp create_plan
+litp run_plan
+assertPlanState successful
+
+litp update -p /deployments/test/clusters/cluster1/services/apachecs -o offline_timeout=300
+litp create_plan
+failCallbackTask callback_method /deployments/test/clusters/cluster1/services/apachecs/applications/service1
+litp run_plan
+assertPlanState failed
+assertAppliedPropertiesDeterminable -p /deployments/test/clusters/cluster1/services/apachecs False
+
+litp create_plan
+
+assertTask 0 callback_method ms1 /deployments/test/clusters/cluster1/services/apachecs/applications/service1 Initial 'Update application resource "Res_App_cluster1_vcs1_service1" for VCS service group "Grp_CS_cluster1_apachecs". Properties: "offline_timeout" and "online_timeout"'
+assertTask 1 callback_method ms1 /deployments/test/clusters/cluster1/services/apachecs Initial 'Restore VCS service group "Grp_CS_cluster1_apachecs"'
+assertTask 2 callback_method ms1 /deployments/test/clusters/cluster1/services/apachecs Initial 'Bring VCS service group "Grp_CS_cluster1_apachecs" online'
+
+litp run_plan
+assertPlanState successful

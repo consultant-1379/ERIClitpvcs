@@ -1,0 +1,41 @@
+runLitpScript ../cluster_common.atlib
+
+# Create 2 services with triggers
+litp create -t service -p /software/services/s1 -o service_name=svc1
+litp create -t vcs-clustered-service -p /deployments/test/clusters/cluster1/services/cs1 -o active=1 standby=1 name="cs1" node_list="node_1,node_2"
+litp inherit -s /software/services/s1 -p /deployments/test/clusters/cluster1/services/cs1/applications/app1
+litp create -t vip -p /deployments/test/clusters/cluster1/services/cs1/ipaddresses/ip6_1 -o  ipaddress='2001:abcd:ef::10/64'  network_name='mgmt'
+litp create -t vcs-trigger -p /deployments/test/clusters/cluster1/services/cs1/triggers/t1 -o trigger_type="postonline"
+
+litp create -t service -p /software/services/s2 -o service_name=svc2
+litp create -t vcs-clustered-service -p /deployments/test/clusters/cluster1/services/cs2 -o active=1 standby=1 name="cs2" node_list="node_1,node_2"
+litp inherit -s /software/services/s2 -p /deployments/test/clusters/cluster1/services/cs2/applications/app2
+litp create -t vip -p /deployments/test/clusters/cluster1/services/cs2/ipaddresses/ip6_1 -o  ipaddress='2001:abcd:ef::11/64'  network_name='mgmt'
+litp create -t vcs-trigger -p /deployments/test/clusters/cluster1/services/cs2/triggers/t2 -o trigger_type="postonline"
+
+litp create_plan
+litp run_plan
+
+# Remove one of the triggers and fail the plan during the node lock phase
+litp remove -p /deployments/test/clusters/cluster1/services/cs2/triggers/t2
+litp create_plan
+failCallbackTask unlock_node /deployments/test/clusters/cluster1/nodes/node_2
+litp run_plan
+
+assertAppliedPropertiesDeterminable -p /deployments/test/clusters/cluster1/services/cs1 True
+assertAppliedPropertiesDeterminable -p /deployments/test/clusters/cluster1/services/cs2 False
+
+# Recreate the plan and make sure that the correct tasks are created to remove the trigger and to reset attributes on the
+# clustered service which had the trigger removed due to APD being false.
+# Verify no tasks are created to reset attributes other clustered service
+# Before LITPCDS-13794, all triggers referenced in the script had their clustered services associated with the tasks so in
+# case of failure, they all had APD set to True so they all got tasks to reset attributes.
+litp create_plan
+
+assertCallbackTask callback_method /deployments/test/clusters/cluster1/services/cs2/applications/app2 callback_func="cb_update_app_before_lock"
+assertCallbackTask callback_method /deployments/test/clusters/cluster1/services/cs2 callback_func="install_callback"
+assertCallbackTask callback_method /deployments/test/clusters/cluster1/services/cs2 callback_func="online_callback"
+assertCallbackTask callback_method /deployments/test/clusters/cluster1/services/cs2/triggers/t2 callback_func=enable_or_disable_trigger_cb callback_class=VcsCluster group_name=Grp_CS_cluster1_cs2 cluster_vpath=/deployments/test/clusters/cluster1 trigger_type=postonline delete=True
+assertConfigTask mn1 vcs::configure_postonline_trigger cluster1 /deployments/test/clusters/cluster1/nodes/node_1 trigger_map='[["Grp_CS_cluster1_cs1", null, "eth0", "2001:abcd:ef::10"]]'
+assertConfigTask mn2 vcs::configure_postonline_trigger cluster1 /deployments/test/clusters/cluster1/nodes/node_2 trigger_map='[["Grp_CS_cluster1_cs1", null, "eth0", "2001:abcd:ef::10"]]'
+

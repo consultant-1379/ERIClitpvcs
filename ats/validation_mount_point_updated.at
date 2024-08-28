@@ -1,0 +1,37 @@
+# An AT to prove a mount point can be updated if a service redeploy is happening, otherwise a validation error is raised
+
+# Early setup stage
+runLitpScript cluster_common.atlib
+runLitpScript add_2_nodes_to_cluster.atlib
+
+# Storage profile setup
+litp create -t storage-profile -p /infrastructure/storage/storage_profiles/vx_sp -o volume_driver='vxvm'
+litp create -t volume-group    -p /infrastructure/storage/storage_profiles/vx_sp/volume_groups/vxvg1 -o volume_group_name='vx_dg'
+litp create -t file-system    -p /infrastructure/storage/storage_profiles/vx_sp/volume_groups/vxvg1/file_systems/versant_fs1 -o mount_point='/opt/ericsson/nms/versant' type="vxfs" size=100G snap_size=0
+litp create -t physical-device -p /infrastructure/storage/storage_profiles/vx_sp/volume_groups/vxvg1/physical_devices/lun0 -o device_name='lun0'
+litp inherit -s /infrastructure/storage/storage_profiles/vx_sp -p /deployments/test/clusters/cluster1/storage_profile/vxvm_storage
+
+# Create the vcs-cluster-service
+litp create -t service -p /software/services/mock -o service_name='mocklsb'
+litp create -t vcs-clustered-service -p /deployments/test/clusters/cluster1/services/cs1/ -o name="cs1" standby=1 active=1 node_list="node_1,node_2"
+litp inherit -s /software/services/mock -p /deployments/test/clusters/cluster1/services/cs1/applications/mock
+litp create -p /deployments/test/clusters/cluster1/services/cs1/ipaddresses/ip1 -t vip -o network_name='mgmt' ipaddress='10.10.10.155'
+litp inherit -p /deployments/test/clusters/cluster1/services/cs1/filesystems/versant_mount -s /deployments/test/clusters/cluster1/storage_profile/vxvm_storage/volume_groups/vxvg1/file_systems/versant_fs1
+
+litp create_plan
+litp run_plan
+
+
+litp update -p /deployments/test/clusters/cluster1/services/cs1 -o online_timeout=234
+litp create -p /deployments/test/clusters/cluster1/services/cs1/ipaddresses/ip2 -t vip -o network_name='mgmt' ipaddress='10.10.10.156'
+
+litp create_plan
+failCallbackTask callback_method /deployments/test/clusters/cluster1/services/cs1/applications/mock
+litp run_plan
+assertAppliedPropertiesDeterminable -p /deployments/test/clusters/cluster1/services/cs1 False
+
+
+
+
+litp update -p /deployments/test/clusters/cluster1/storage_profile/vxvm_storage/volume_groups/vxvg1/file_systems/versant_fs1 -o mount_point='/opt1/'
+assertError --err_message 'Create plan failed: Update of mount_point property is not supported' create_plan

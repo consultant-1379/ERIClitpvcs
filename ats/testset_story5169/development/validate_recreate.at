@@ -1,0 +1,17 @@
+# Prerequisite - LITP Deployment
+runLitpScript ../../cluster_common.atlib
+
+litp create -p /deployments/test/clusters/cluster1/services/CS1 -t vcs-clustered-service -o active=2 standby=0 name='service1' node_list='node_1,node_2' 
+litp create -p /software/services/APP1 -t service -o service_name='app1'
+litp inherit -p /deployments/test/clusters/cluster1/services/CS1/applications/APP1 -s /software/services/APP1 
+litp create_plan
+litp run_plan
+
+litp remove -p /deployments/test/clusters/cluster1/services/CS1
+
+litp create -p /deployments/test/clusters/cluster1/services/CS2 -t vcs-clustered-service -o active=2 standby=0 name='service2' node_list='node_1,node_2' 
+litp create -p /software/services/APP2 -t service -o service_name='app1'
+litp inherit -p /deployments/test/clusters/cluster1/services/CS2/applications/APP2 -s /software/services/APP2 
+
+litp create_plan
+

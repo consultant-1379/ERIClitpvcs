@@ -1,0 +1,63 @@
+##############
+# This AT is for development testing
+#
+# Goal: check if, during a cluster contraction, a previously
+#       set (to value valid for the new number of nodes)
+#       vcs_seed_threshold property of vcs-cluster item
+#       is preserved.
+#
+# Scenario:
+#       Inherited from testset_common/cluster_common_four_node.atlib
+#       Set vcs_seed_threshold to 1.
+#
+# Actions:
+#       Remove a new node from the cluster and set
+#       vcs_seed_threshold property
+#
+
+####
+# Bulding the scenario
+#
+assertNoPlan
+add-plugins patch_mco_agent
+runLitpScript testset_common/cluster_common_four_node.atlib
+
+####
+# Check built scenario
+#
+assertPlanState successful
+assertPropertyUnset -p /deployments/test/clusters/cluster1 -o vcs_seed_threshold
+assertState -p /deployments/test/clusters/cluster1 Applied
+
+####
+# Actions
+#
+
+#
+# Set vcs_seed_threshold to the number of nodes
+#
+litp update -p /deployments/test/clusters/cluster1 -o vcs_seed_threshold='1'
+litp create_plan
+litp run_plan
+
+assertPlanState successful
+assertProperty /deployments/test/clusters/cluster1 -o vcs_seed_threshold='1'
+assertState -p /deployments/test/clusters/cluster1 Applied
+
+#
+# Contract the cluster to have 3 nodes
+#
+litp remove -p /deployments/test/clusters/cluster1/nodes/node_3
+litp create_plan
+
+#####
+# Run plan
+#
+litp run_plan
+
+#####
+# Post-run Checks
+#
+assertPlanState successful
+assertProperty /deployments/test/clusters/cluster1 -o vcs_seed_threshold='1'
+assertState -p /deployments/test/clusters/cluster1 Applied

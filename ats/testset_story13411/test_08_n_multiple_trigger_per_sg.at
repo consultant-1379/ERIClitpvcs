@@ -1,0 +1,30 @@
+###############################################################
+#	Description: Test to validate against a user trying to
+#	create multiple triggers in a sg
+#
+#	Steps:
+#		1. Create a fail over VCS SG with a VCS trigger
+#		2. Create/ Run Plan
+#		3. Create additional VCS trigger
+#		4. Assert validation message is received
+#
+###############################################################
+
+runLitpScript ../cluster_common.atlib
+
+# Step 1: Create VCS SG with multiple services inherited and a vcs trigger with service_id referring to one of the inherited services
+
+litp create -t service -p /software/services/mock -o service_name='mocklsb'
+litp create -t vcs-clustered-service -p /deployments/test/clusters/cluster1/services/cs1/ -o name="cs1" standby=1 active=1 node_list="node_1,node_2"
+litp inherit -s /software/services/mock -p /deployments/test/clusters/cluster1/services/cs1/applications/mock
+litp create -t vcs-trigger -p /deployments/test/clusters/cluster1/services/cs1/triggers/trig1 -o trigger_type=nofailover
+
+# Step 2: Create/ Run Plan
+litp create_plan
+litp run_plan
+
+# Step 3: Create additional VCS trigger
+litp create -t vcs-trigger -p /deployments/test/clusters/cluster1/services/cs1/triggers/trig2 -o trigger_type=nofailover
+
+# Step 4: Assert Error Message
+assertError --err_type ValidationError --err_message 'Create plan failed: Only one nofailover trigger type is allowed for each vcs-clustered-service' --err_vpath /deployments/test/clusters/cluster1/services/cs1 create_plan

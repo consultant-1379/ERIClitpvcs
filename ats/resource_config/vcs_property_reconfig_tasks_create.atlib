@@ -1,0 +1,8 @@
+# lib to set up vcs clustered service and app for testing callback tasks for vcs resource reconfig
+
+litp create -t service -p /software/services/s1 -o service_name=httpd
+litp create -t vcs-clustered-service -p /deployments/test/clusters/cluster1/services/cs1 -o active=1 standby=0 name='cs1' online_timeout=310 offline_timeout=320 node_list='node_1'
+litp inherit -p /deployments/test/clusters/cluster1/services/cs1/applications/s1 -s /software/services/s1
+litp create -p /deployments/test/clusters/cluster1/services/cs1/ha_configs/service_config -t ha-service-config -o restart_limit="5" startup_retry_limit="5" service_id="s1" fault_on_monitor_timeouts="6" tolerance_limit="1" clean_timeout="90"
+litp create_plan
+litp run_plan

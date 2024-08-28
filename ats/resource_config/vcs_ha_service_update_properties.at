@@ -1,0 +1,26 @@
+runLitpScript ../cluster_common.atlib
+
+litp create -p /deployments/test/clusters/cluster1/services/serv1 -t clustered-service -o active=2 standby=0 name='serv1' node_list='node2,node1'
+
+# Verify validation errors on invalid values for clean_timeout, fault_on_monitor_timeouts and tolerance_limit properties
+assertError --err_type "ValidationError" --err_property "clean_timeout" --err_message "Invalid value '0'." create -p /deployments/test/clusters/cluster1/services/serv1/ha_configs/service_config -t ha-service-config -o restart_limit="5" startup_retry_limit="5" service_id="sid1" fault_on_monitor_timeouts="6" tolerance_limit="1" clean_timeout="0"
+assertError --err_type "ValidationError" --err_property "clean_timeout" --err_message "Invalid value '-1'." create -p /deployments/test/clusters/cluster1/services/serv1/ha_configs/service_config -t ha-service-config -o restart_limit="5" startup_retry_limit="5" service_id="sid1" fault_on_monitor_timeouts="6" tolerance_limit="1" clean_timeout="-1"
+assertError --err_type "ValidationError" --err_property "fault_on_monitor_timeouts" --err_message "Invalid value '-2'." create -p /deployments/test/clusters/cluster1/services/serv1/ha_configs/service_config -t ha-service-config -o restart_limit="5" startup_retry_limit="5" service_id="sid1" fault_on_monitor_timeouts="-2" tolerance_limit="1" clean_timeout="90"
+assertError --err_type "ValidationError" --err_property "tolerance_limit" --err_message "Invalid value '-1'." create -p /deployments/test/clusters/cluster1/services/serv1/ha_configs/service_config -t ha-service-config -o restart_limit="5" startup_retry_limit="5" service_id="sid1" fault_on_monitor_timeouts="6" tolerance_limit="-1" clean_timeout="90"
+
+# Verify valid values are correctly set
+litp create -p /deployments/test/clusters/cluster1/services/serv1/ha_configs/service_config -t ha-service-config -o restart_limit="5" startup_retry_limit="5" service_id="sid1" fault_on_monitor_timeouts="6" tolerance_limit="1" clean_timeout="90"
+assertProperty /deployments/test/clusters/cluster1/services/serv1/ha_configs/service_config -o fault_on_monitor_timeouts="6" tolerance_limit="1" clean_timeout="90"
+
+# Verify default values are set when property values not specified
+litp create -p /deployments/test/clusters/cluster1/services/serv2 -t clustered-service -o active=2 standby=0 name='serv2' node_list='node2,node1'
+litp create -p /deployments/test/clusters/cluster1/services/serv2/ha_configs/service_config -t ha-service-config -o restart_limit="5" startup_retry_limit="5" service_id="sid1"
+assertProperty /deployments/test/clusters/cluster1/services/serv2/ha_configs/service_config -o fault_on_monitor_timeouts="4" tolerance_limit="0" clean_timeout="60"
+
+# Verify reconfigure of clean_timeout, fault_on_monitor_timeouts and tolerance_limit properties
+litp update -p /deployments/test/clusters/cluster1/services/serv1/ha_configs/service_config -o fault_on_monitor_timeouts="10" tolerance_limit="2" clean_timeout="180"
+assertProperty /deployments/test/clusters/cluster1/services/serv1/ha_configs/service_config -o fault_on_monitor_timeouts="10" tolerance_limit="2" clean_timeout="180"
+
+# Verify default values are set after removal of properties
+litp update -p /deployments/test/clusters/cluster1/services/serv1/ha_configs/service_config -d fault_on_monitor_timeouts tolerance_limit clean_timeout
+assertProperty /deployments/test/clusters/cluster1/services/serv1/ha_configs/service_config -o fault_on_monitor_timeouts="4" tolerance_limit="0" clean_timeout="60"

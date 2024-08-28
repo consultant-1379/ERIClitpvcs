@@ -1,0 +1,22 @@
+runLitpScript cluster_common.atlib
+
+litp create -t service -p /software/services/mock -o service_name=mocklsb
+litp create -t vcs-clustered-service -p /deployments/test/clusters/cluster1/services/cs1 -o name="cs1" active=2 standby=0 node_list="node_1,node_2"
+litp inherit -s /software/services/mock -p /deployments/test/clusters/cluster1/services/cs1/applications/mock
+
+litp create -p /deployments/test/clusters/cluster1/services/cs1/ipaddresses/ip1 -t vip -o network_name='mgmt' ipaddress='10.10.10.155'
+litp create -p /deployments/test/clusters/cluster1/services/cs1/ipaddresses/ip2 -t vip -o network_name='mgmt' ipaddress='10.10.10.156'
+
+litp create_plan
+litp run_plan
+
+
+litp create -t network -p /infrastructure/networking/networks/traffic4 -o name='traffic4' subnet=10.10.10.0/24
+litp create -p /deployments/test/clusters/cluster1/nodes/node_1/network_interfaces/nic7 -t eth -o device_name=eth7 macaddress=08:00:27:35:A4:2F network_name=traffic4
+litp create -p /deployments/test/clusters/cluster1/services/CS36 -t vcs-clustered-service -o active=1 standby=0 name='CS36' online_timeout=60 node_list='node_1'
+litp create -p /software/services/APP36 -t service -o cleanup_command='/bin/touch /tmp/test-lsb-36.cleanup' service_name='test-lsb-36' stop_command='/sbin/service test-lsb-36 stop' status_command='/sbin/service test-lsb-36 status' start_command='/sbin/service test-lsb-36 start'
+litp inherit -p /deployments/test/clusters/cluster1/services/CS36/applications/APP36 -s /software/services/APP36
+litp create -p /deployments/test/clusters/cluster1/services/CS36/ipaddresses/ip1 -t vip -o ipaddress='10.10.10.1' network_name='traffic4'
+
+litp create_plan
+

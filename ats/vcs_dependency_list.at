@@ -1,0 +1,30 @@
+runLitpScript cluster_common.atlib
+
+litp create -t vcs-clustered-service -p /deployments/test/clusters/cluster1/services/cs1 -o name="httpd" active=1 standby=1 node_list="node_1,node_2"
+litp create -t lsb-runtime           -p /deployments/test/clusters/cluster1/services/cs1/runtimes/apache -o service_name=httpd
+
+litp create -t vcs-clustered-service -p /deployments/test/clusters/cluster1/services/cs2 -o name="nfs" active=1 standby=1 node_list="node_1,node_2" dependency_list='cs1'
+litp create -t lsb-runtime           -p /deployments/test/clusters/cluster1/services/cs2/runtimes/nfs -o service_name=nfs
+
+litp create -t vcs-clustered-service -p /deployments/test/clusters/cluster1/services/cs3 -o name="ricci" active=1 standby=1 node_list="node_1,node_2" dependency_list='cs1,cs2'
+litp create -t lsb-runtime           -p /deployments/test/clusters/cluster1/services/cs3/runtimes/ricci -o service_name=ricci
+
+litp create -t vcs-clustered-service -p /deployments/test/clusters/cluster1/services/cs4 -o name="foo" active=1 standby=1 node_list="node_1,node_2" dependency_list=''
+litp create -t lsb-runtime           -p /deployments/test/clusters/cluster1/services/cs4/runtimes/foo -o service_name=foo
+
+# Add clustered services in parallel
+litp create -t vcs-clustered-service -p /deployments/test/clusters/cluster1/services/cs6 -o name="cs6" active=2 standby=0 node_list="node_1,node_2"
+litp create -t lsb-runtime           -p /deployments/test/clusters/cluster1/services/cs6/runtimes/runtime6 -o service_name=runtime6
+
+litp create -t vcs-clustered-service -p /deployments/test/clusters/cluster1/services/cs7 -o name="cs7" active=2 standby=0 node_list="node_2,node_1" dependency_list='cs6'
+litp create -t lsb-runtime           -p /deployments/test/clusters/cluster1/services/cs7/runtimes/runtime7 -o service_name=runtime7
+
+litp create_plan
+litp run_plan
+
+# Add another vcs-clustered-service with dependencies
+litp create -t vcs-clustered-service -p /deployments/test/clusters/cluster1/services/cs5 -o name="bar" active=1 standby=1 node_list="node_2,node_1" dependency_list='cs1'
+litp create -t lsb-runtime           -p /deployments/test/clusters/cluster1/services/cs5/runtimes/runtime5 -o service_name=runtime5
+
+litp create_plan
+litp run_plan

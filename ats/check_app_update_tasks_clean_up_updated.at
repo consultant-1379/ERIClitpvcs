@@ -1,0 +1,20 @@
+runLitpScript cluster_common.atlib
+
+litp create_plan
+litp run_plan
+
+litp create -t service -p /software/services/mock -o service_name='mocklsb' cleanup_command="/sbin/service cleanup_command"
+
+litp create -t vcs-clustered-service -p /deployments/test/clusters/cluster1/services/cs1/ -o name="cs1" standby=0 active=2 node_list="node_1,node_2"
+
+litp inherit -s /software/services/mock -p /deployments/test/clusters/cluster1/services/cs1/applications/mock
+
+litp create_plan
+litp run_plan
+
+litp update -p /software/services/mock -o cleanup_command="/sbin/service new cleanup_command"
+
+litp create_plan
+
+assertCallbackTask callback_method /deployments/test/clusters/cluster1/services/cs1/applications/mock callback_func=cb_update_app_after_lock callback_class=ApplicationResource
+

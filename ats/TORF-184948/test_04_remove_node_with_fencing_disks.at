@@ -1,0 +1,20 @@
+
+runLitpScript infrastructure.atlib
+runLitpScript node1.atlib
+runLitpScript node2.atlib
+runLitpScript node3.atlib
+runLitpScript node4.atlib
+add-plugins facter_mock_plugin_1234
+
+litp create_plan
+litp run_plan
+
+litp remove -p /deployments/test/clusters/cluster1/nodes/node_2
+litp create_plan
+
+litp create -p /deployments/test/clusters/cluster1/fencing_disks/fd1 -t disk -o uuid=123 size=100M name=fencing_disk_1
+litp create -p /deployments/test/clusters/cluster1/fencing_disks/fd2 -t disk -o uuid=234 size=100M name=fencing_disk_2
+litp create -p /deployments/test/clusters/cluster1/fencing_disks/fd3 -t disk -o uuid=345 size=100M name=fencing_disk_3
+
+assertError --err_message "Create plan failed: Fencing disks may not be added to an existing cluster" create_plan
+

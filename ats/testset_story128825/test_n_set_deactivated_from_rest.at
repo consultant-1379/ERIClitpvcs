@@ -1,0 +1,26 @@
+# Prerequisite - LITP deployment
+runLitpScript ../cluster_common.atlib
+runLitpScript ../add_2_nodes_to_cluster.atlib
+
+# 1. Create a failover service group CS1. Set deactivated=true on CS1
+litp create -t vcs-clustered-service -p /deployments/test/clusters/cluster1/services/CS1 -o name=cs1 active=1 standby=1 node_list=node_1,node_2 deactivated=true
+litp create -t service -p /software/services/service01 -o service_name=service01
+litp inherit -s /software/services/service01 -p /deployments/test/clusters/cluster1/services/CS1/applications/service01
+
+# 2. Verify validation error when deactivated=true on an initial service
+let __err1 --err_type ValidationError --err_vpath /deployments/test/clusters/cluster1/services/CS1 --err_message 'deactivated property set to "true" on a vcs-clustered-service that has not been deactivated.'
+assertError __err1 create_plan
+
+# 3. Remove deactivated property from CS1 and deploy the service
+litp update -p /deployments/test/clusters/cluster1/services/CS1 -d deactivated
+litp create_plan
+assertCallbackTask callback_method /deployments/test/clusters/cluster1/services/CS1 callback_func=install_callback
+litp run_plan
+
+# 3. Verify validation error when set deactivated=true on a deployed service.
+litp update -p /deployments/test/clusters/cluster1/services/CS1 -o deactivated=true
+assertError __err1 create_plan
+
+litp update -p /deployments/test/clusters/cluster1/services/CS1 -o deactivated=false
+let __err2 --err_type DoNothingPlanError --err_message 'no tasks were generated'
+assertError __err2 create_plan

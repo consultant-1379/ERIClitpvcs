@@ -1,0 +1,13 @@
+runLitpScript ../cluster_common.atlib
+
+litp create -t service -p /software/services/s1 -o service_name=svc1
+litp create -t vcs-clustered-service -p /deployments/test/clusters/cluster1/services/cs1 -o active=1 standby=0 name="cs1" node_list="node_1"
+litp inherit -s /software/services/s1 -p /deployments/test/clusters/cluster1/services/cs1/applications/app1
+litp create -t vip -p /deployments/test/clusters/cluster1/services/cs1/ipaddresses/ip6_2 -o  ipaddress='2001:abcd:ef::11/64'  network_name='mgmt'
+litp create -t vcs-trigger -p /deployments/test/clusters/cluster1/services/cs1/triggers/t2 -o trigger_type="postonline"
+litp create_plan
+litp run_plan
+
+litp update -p /deployments/test/clusters/cluster1/services/cs1 -o standby=1 node_list="node_1,node_2"
+assertError --err_type ValidationError --err_message 'Create plan failed: Reconfiguration of a clustered-service from parallel to failover is not supported' --err_vpath /deployments/test/clusters/cluster1/services/cs1 create_plan
+

@@ -1,0 +1,34 @@
+# Prerequisite - LITP Deployment
+runLitpScript ../../cluster_common.atlib
+
+litp create -p /deployments/test/clusters/cluster1/services/CS1 -t vcs-clustered-service -o active=2 standby=0 name='service1' dependency_list="CS2" node_list='node_1,node_2'
+litp create -p /software/services/APP1 -t service -o service_name='app1'
+litp inherit -p /deployments/test/clusters/cluster1/services/CS1/applications/APP1 -s /software/services/APP1
+
+litp create -p /deployments/test/clusters/cluster1/services/CS2 -t vcs-clustered-service -o active=2 standby=0 name='service2' dependency_list="CS3" node_list='node_1,node_2'
+litp create -p /software/services/APP2 -t service -o service_name='app2'
+litp inherit -p /deployments/test/clusters/cluster1/services/CS2/applications/APP2 -s /software/services/APP2
+
+litp create -p /deployments/test/clusters/cluster1/services/CS3 -t vcs-clustered-service -o active=2 standby=0 name='service3' node_list='node_1,node_2'
+litp create -p /software/services/APP3 -t service -o service_name='app3'
+litp inherit -p /deployments/test/clusters/cluster1/services/CS3/applications/APP3 -s /software/services/APP3
+
+litp create_plan
+litp run_plan
+
+litp remove -p /deployments/test/clusters/cluster1/services/CS2
+let __err --err_message 'The following clustered service dependencies are marked for removal: "CS2"' --err_type ValidationError  --err_vpath '/deployments/test/clusters/cluster1/services/CS1'
+assertError __err create_plan
+
+litp remove -p /deployments/test/clusters/cluster1/services/CS1
+litp create_plan
+
+assertCallbackTask callback_method /deployments/test/clusters/cluster1/services/CS1 callback_func=delete_callback service_vpath=/deployments/test/clusters/cluster1/services/CS1 cluster_vpath=/deployments/test/clusters/cluster1
+assertCallbackTask callback_method /deployments/test/clusters/cluster1/services/CS2 callback_func=delete_callback service_vpath=/deployments/test/clusters/cluster1/services/CS2 cluster_vpath=/deployments/test/clusters/cluster1
+let __task1 CallbackTask callback_method /deployments/test/clusters/cluster1/services/CS1 callback_func=delete_callback service_vpath=/deployments/test/clusters/cluster1/services/CS1 cluster_vpath=/deployments/test/clusters/cluster1
+let __task2 CallbackTask callback_method /deployments/test/clusters/cluster1/services/CS2 callback_func=delete_callback service_vpath=/deployments/test/clusters/cluster1/services/CS2 cluster_vpath=/deployments/test/clusters/cluster1
+
+assertTaskBeforeTask __task1 __task2
+
+litp run_plan
+

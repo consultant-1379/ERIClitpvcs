@@ -1,0 +1,13 @@
+runLitpScript ../cluster_common.atlib
+
+litp create -t service -p /software/services/mock -o service_name='mocklsb'
+
+litp create -t vcs-clustered-service -p /deployments/test/clusters/cluster1/services/cs1/ -o name="cs1" standby=0 active=2 node_list="node_1,node_2"
+litp inherit -s /software/services/mock -p /deployments/test/clusters/cluster1/services/cs1/applications/mock
+
+litp create_plan
+litp run_plan
+litp update -p /deployments/test/clusters/cluster1/services/cs1/ -o standby=1 active=1 node_list="node_1,node_2"
+
+assertError --err_message 'Reconfiguration of a clustered-service from parallel to failover is not supported' create_plan
+

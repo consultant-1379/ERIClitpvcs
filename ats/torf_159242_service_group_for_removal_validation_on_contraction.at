@@ -1,0 +1,23 @@
+# Prerequisite - LITP deployment
+runLitpScript cluster_common.atlib
+
+# 1. Create parallel service groups CS1 and CS2
+litp create -t vcs-clustered-service -p /deployments/test/clusters/cluster1/services/CS1 -o name=cs1 active=1 standby=0 node_list=node_1 dependency_list=CS2
+litp create -t service -p /software/services/service01 -o service_name=service01
+litp inherit -s /software/services/service01 -p /deployments/test/clusters/cluster1/services/CS1/applications/service01
+
+litp create -t vcs-clustered-service -p /deployments/test/clusters/cluster1/services/CS2 -o name=cs2 active=2 standby=0 node_list=node_1,node_2
+litp create -t service -p /software/services/service02 -o service_name=service02
+litp inherit -s /software/services/service02 -p /deployments/test/clusters/cluster1/services/CS2/applications/service02
+
+litp create_plan
+litp run_plan
+
+# 3. Remove dependency and verify that dependency task precedes contraction task
+litp update -p /deployments/test/clusters/cluster1/services/CS1 -d dependency_list
+litp create_plan
+litp run_plan
+
+# 4. Verify it is now ok to remove CS2
+litp remove -p /deployments/test/clusters/cluster1/services/CS2
+litp create_plan

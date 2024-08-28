@@ -1,0 +1,21 @@
+# AT to ensure that a cluster service that is a critical service within that cluster,
+# cannot be migrated from existing nodes to compmlete set of new nodes
+
+runLitpScript ../../testset_common/cluster_common_four_node.atlib
+litp update -p /deployments/test/clusters/cluster1 -o critical_service='cs1'
+
+# 2. Create critical service
+litp create -t service -p /software/services/mock -o service_name='mocklsb'
+litp create -t vcs-clustered-service -p /deployments/test/clusters/cluster1/services/cs1/ -o name="cs1" standby=1 active=1 node_list="node_1,node_2"
+litp inherit -s /software/services/mock -p /deployments/test/clusters/cluster1/services/cs1/applications/mock
+litp create_plan
+litp run_plan
+
+#Update the node list for the service - node_list is not a subset or superset of applied nodes
+litp update -p /deployments/test/clusters/cluster1/services/cs1 -o node_list="node_3,node_4"
+assertError  --err_type ValidationError --err_message "Create plan failed: Migration of a critical service cs1 is not supported" create_plan
+
+#Update the node list for the service - node_list is not a subset or superset of applied nodes
+litp update -p /deployments/test/clusters/cluster1/services/cs1 -o node_list="node_1,node_3,node_4"
+assertError  --err_type ValidationError --err_message "Create plan failed: Migration of a critical service cs1 is not supported" create_plan
+

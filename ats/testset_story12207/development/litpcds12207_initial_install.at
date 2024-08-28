@@ -1,0 +1,17 @@
+runLitpScript ../../cluster_common.atlib
+
+litp update -p /deployments/test/clusters/cluster1 -o app_agent_num_threads=25
+
+litp create -t service -p /software/services/nfs -o service_name=nfs
+litp create -t vcs-clustered-service -p /deployments/test/clusters/cluster1/services/nfs -o active=1 standby=1 name="nfs" node_list="node_1,node_2"
+litp inherit -s /software/services/nfs -p /deployments/test/clusters/cluster1/services/nfs/applications/nfs
+
+litp create_plan
+
+let __task_check_cluster_online CallbackTask callback_method /deployments/test/clusters/cluster1 callback_func=vcs_poll_callback callback_class=VcsCluster nodes='["mn2", "mn1"]'
+let __task_update_num_threads CallbackTask callback_method /deployments/test/clusters/cluster1 callback_func=vcs_app_agent_num_threads_callback callback_class=VcsCluster nodes='["mn2", "mn1"]' app_agent_num_threads=25
+let __task_install_nfs_sg CallbackTask callback_method /deployments/test/clusters/cluster1/services/nfs callback_func=install_callback callback_class=VcsServiceGroupHelper service_vpath=/deployments/test/clusters/cluster1/services/nfs cluster_item_id=cluster1
+
+# On initial install the task should be after the "check cluster online", but before the first "Create service group"
+assertTaskBeforeTask __task_check_cluster_online __task_update_num_threads
+assertTaskBeforeTask __task_update_num_threads __task_install_nfs_sg

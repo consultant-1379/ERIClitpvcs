@@ -1,0 +1,53 @@
+######################################################
+# LITPCDS-5172:
+#     test_02_p_cs_remove_cleanup_command_service
+# Description:
+#     To ensure that it is possible to remove previously applied
+#     "cleanup_command", in previously created "vcs-clustered-service"
+#     and "service" type item when the services are two and second has
+#     default value for "cleanup_command".
+# Steps:
+#     Create a clustered service group with ha-service config properties
+#     Create/ Run Plan
+#     Update ha-service-configs properties
+#     Update online/offline timeout values on clustered service
+#     Update cleanup-command property in service item
+#     Create/ Run Plan again
+#     Delete cleanup_command property in service item
+#     Create/ Run Plan again
+#     Ensure no errors are returned
+# Result:
+#     Cleanup command can be removed from service item
+######################################################
+runLitpScript ../cluster_common.atlib
+
+# Step 1: Create a clustered service group with ha-service config properties
+litp create -t service -p /software/services/mock1 -o service_name='mocklsb1'
+litp create -t vcs-clustered-service -p /deployments/test/clusters/cluster1/services/CS_5172_1/ -o name="cs1" standby=0 active=1 node_list="node_1" online_timeout=180
+litp inherit -s /software/services/mock1 -p /deployments/test/clusters/cluster1/services/CS_5172_1/applications/mock1
+litp create -p /deployments/test/clusters/cluster1/services/CS_5172_1/ha_configs/HSC_5172_1 -t ha-service-config -o fault_on_monitor_timeouts="280" tolerance_limit="300"
+
+# Step 2: Create/ Run plan
+litp create_plan
+litp run_plan
+
+# Step 3: Update ha-service-configs properties
+litp update -p /deployments/test/clusters/cluster1/services/CS_5172_1/ha_configs/HSC_5172_1 -o fault_on_monitor_timeouts="600" tolerance_limit=901 clean_timeout=701 restart_limit=12 startup_retry_limit=3  status_interval=14 status_timeout=15
+
+# Step 4: Update online/offline timeout values on clustered service
+litp update -p /deployments/test/clusters/cluster1/services/CS_5172_1 -o online_timeout=100 offline_timeout=180
+
+# Step 5: Update cleanup-command property in service item
+litp update -p /software/services/mock1 -o cleanup_command="/bin/touch /tmp/test-lsb.cleanup"
+
+# Step 6: Create/ Run plan again
+litp create_plan
+litp run_plan
+
+# Step 7: Delete cleanup_command property in service item
+litp update -p /software/services/mock1 -d cleanup_command
+
+# Step 6: Create/ Run plan again
+# Step 7: Ensure no errors are returned
+litp create_plan
+litp run_plan

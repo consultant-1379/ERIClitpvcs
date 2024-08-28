@@ -1,0 +1,66 @@
+# Setup second Cluster
+litp create -p /deployments/test/clusters/cluster2 -t vcs-cluster -o cluster_type=sfha llt_nets="heartbeat1,heartbeat2" low_prio_net="mgmt" cluster_id="2"
+
+# Add node systems for nodes 3 and 4
+litp create -p /infrastructure/systems/system_3 -t system -o system_name=MN3VM
+litp create -p /infrastructure/systems/system_4 -t system -o system_name=MN4VM
+
+# Add new storage profile
+litp create -p /infrastructure/storage/storage_profiles/profile_2                                               -t storage-profile
+litp create -p /infrastructure/storage/storage_profiles/profile_2/volume_groups/vg1                             -t volume-group         -o volume_group_name=vg_root
+litp create -p /infrastructure/storage/storage_profiles/profile_2/volume_groups/vg1/file_systems/root           -t file-system          -o type=ext4 mount_point=/ size=16G
+litp create -p /infrastructure/storage/storage_profiles/profile_2/volume_groups/vg1/physical_devices/internal   -t physical-device      -o device_name=hd0
+
+
+# Setup Node3
+litp create -p /deployments/test/clusters/cluster2/nodes/node_3                             -t node             -o hostname=mn3
+litp inherit -p /deployments/test/clusters/cluster2/nodes/node_3/system                     -s              /infrastructure/systems/system_3
+litp inherit -p /deployments/test/clusters/cluster2/nodes/node_3/routes/default             -s              /infrastructure/networking/routes/def
+litp inherit -p /deployments/test/clusters/cluster2/nodes/node_3/storage_profile            -s              /infrastructure/storage/storage_profiles/profile_2
+litp inherit -p /deployments/test/clusters/cluster2/nodes/node_3/os                         -s              /software/profiles/rhel_6_4
+litp create -p /deployments/test/clusters/cluster2/nodes/node_3/network_interfaces/nic_0  -t eth              -o device_name=eth0 macaddress=08:00:27:5B:C1:32 network_name=mgmt ipaddress=10.10.10.103
+litp create -p /deployments/test/clusters/cluster2/nodes/node_3/network_interfaces/nic_2  -t eth              -o device_name=eth2 macaddress=08:00:27:06:C0:63 network_name=heartbeat1
+litp create -p /deployments/test/clusters/cluster2/nodes/node_3/network_interfaces/nic_3  -t eth              -o device_name=eth3 macaddress=08:00:27:21:7D:B4 network_name=heartbeat2
+
+# Setup Node4
+litp create -p /deployments/test/clusters/cluster2/nodes/node_4                             -t node             -o hostname=mn4
+litp inherit -p /deployments/test/clusters/cluster2/nodes/node_4/system                     -s              /infrastructure/systems/system_4
+litp inherit -p /deployments/test/clusters/cluster2/nodes/node_4/routes/default             -s              /infrastructure/networking/routes/def
+litp inherit -p /deployments/test/clusters/cluster2/nodes/node_4/storage_profile            -s              /infrastructure/storage/storage_profiles/profile_2
+litp inherit -p /deployments/test/clusters/cluster2/nodes/node_4/os                         -s              /software/profiles/rhel_6_4
+litp create -p /deployments/test/clusters/cluster2/nodes/node_4/network_interfaces/nic_0  -t eth              -o device_name=eth0 macaddress=08:00:27:5B:C1:33 network_name=mgmt ipaddress=10.10.10.104
+litp create -p /deployments/test/clusters/cluster2/nodes/node_4/network_interfaces/nic_2  -t eth              -o device_name=eth2 macaddress=08:00:27:06:C0:64 network_name=heartbeat1
+litp create -p /deployments/test/clusters/cluster2/nodes/node_4/network_interfaces/nic_3  -t eth              -o device_name=eth3 macaddress=08:00:27:21:7D:B5 network_name=heartbeat2
+
+# Setup third Cluster
+litp create -p /deployments/test/clusters/cluster3 -t vcs-cluster -o cluster_type=sfha llt_nets="heartbeat1,heartbeat2" low_prio_net="mgmt" cluster_id="3"
+
+# Add node systems for nodes 5 and 6
+litp create -p /infrastructure/systems/system_5 -t system -o system_name=MN5VM
+litp create -p /infrastructure/systems/system_6 -t system -o system_name=MN6VM
+
+# Add new storage profile
+litp create -p /infrastructure/storage/storage_profiles/profile_3                                               -t storage-profile
+litp create -p /infrastructure/storage/storage_profiles/profile_3/volume_groups/vg1                             -t volume-group         -o volume_group_name=vg_root
+litp create -p /infrastructure/storage/storage_profiles/profile_3/volume_groups/vg1/file_systems/root           -t file-system          -o type=ext4 mount_point=/ size=16G
+litp create -p /infrastructure/storage/storage_profiles/profile_3/volume_groups/vg1/physical_devices/internal   -t physical-device      -o device_name=hd0
+
+# Setup Node5
+litp create -p /deployments/test/clusters/cluster3/nodes/node_5                             -t node             -o hostname=mn5
+litp inherit -p /deployments/test/clusters/cluster3/nodes/node_5/system                     -s              /infrastructure/systems/system_5
+litp inherit -p /deployments/test/clusters/cluster3/nodes/node_5/routes/default             -s              /infrastructure/networking/routes/def
+litp inherit -p /deployments/test/clusters/cluster3/nodes/node_5/storage_profile            -s              /infrastructure/storage/storage_profiles/profile_3
+litp inherit -p /deployments/test/clusters/cluster3/nodes/node_5/os                         -s              /software/profiles/rhel_6_4
+litp create -p /deployments/test/clusters/cluster3/nodes/node_5/network_interfaces/nic_0  -t eth              -o device_name=eth0 macaddress=08:00:27:5B:C1:32 network_name=mgmt ipaddress=10.10.10.103
+litp create -p /deployments/test/clusters/cluster3/nodes/node_5/network_interfaces/nic_2  -t eth              -o device_name=eth2 macaddress=08:00:27:06:C0:63 network_name=heartbeat1
+litp create -p /deployments/test/clusters/cluster3/nodes/node_5/network_interfaces/nic_3  -t eth              -o device_name=eth3 macaddress=08:00:27:21:7D:B4 network_name=heartbeat2
+
+# Setup Node6
+litp create -p /deployments/test/clusters/cluster3/nodes/node_6                             -t node             -o hostname=mn6
+litp inherit -p /deployments/test/clusters/cluster3/nodes/node_6/system                     -s              /infrastructure/systems/system_6
+litp inherit -p /deployments/test/clusters/cluster3/nodes/node_6/routes/default             -s              /infrastructure/networking/routes/def
+litp inherit -p /deployments/test/clusters/cluster3/nodes/node_6/storage_profile            -s              /infrastructure/storage/storage_profiles/profile_3
+litp inherit -p /deployments/test/clusters/cluster3/nodes/node_6/os                         -s              /software/profiles/rhel_6_4
+litp create -p /deployments/test/clusters/cluster3/nodes/node_6/network_interfaces/nic_0  -t eth              -o device_name=eth0 macaddress=08:00:27:5B:C1:33 network_name=mgmt ipaddress=10.10.10.104
+litp create -p /deployments/test/clusters/cluster3/nodes/node_6/network_interfaces/nic_2  -t eth              -o device_name=eth2 macaddress=08:00:27:06:C0:64 network_name=heartbeat1
+litp create -p /deployments/test/clusters/cluster3/nodes/node_6/network_interfaces/nic_3  -t eth              -o device_name=eth3 macaddress=08:00:27:21:7D:B5 network_name=heartbeat2

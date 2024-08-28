@@ -1,0 +1,55 @@
+#  An AT to ensure the deactivates property of an applied service cannot be update
+# Prerequisite - LITP deployment
+add-plugins plugins/set_deactivated
+runLitpScript ../cluster_common.atlib
+runLitpScript ../add_2_nodes_to_cluster.atlib
+
+# 1. Create failover service group CS1
+litp create -t vcs-clustered-service -p /deployments/test/clusters/cluster1/services/CS1 -o name=cs1 active=1 standby=1 node_list=node_1,node_2
+litp create -t service -p /software/services/service01 -o service_name=service01
+litp inherit -s /software/services/service01 -p /deployments/test/clusters/cluster1/services/CS1/applications/service01
+
+# 2. Create parallel service group CS2
+litp create -t vcs-clustered-service -p /deployments/test/clusters/cluster1/services/CS2 -o name=cs2 active=2 standby=0 node_list=node_1,node_2
+litp create -t service -p /software/services/service02 -o service_name=service02
+litp inherit -s /software/services/service02 -p /deployments/test/clusters/cluster1/services/CS2/applications/service02
+
+litp create_plan
+litp run_plan
+
+# 3. Create service group CS3 that deactivates CS1
+litp create -t vcs-clustered-service -p /deployments/test/clusters/cluster1/services/CS3 -o name=cs3 active=1 standby=1 node_list=node_3,node_4 deactivates=CS1
+litp inherit -s /software/services/service01 -p /deployments/test/clusters/cluster1/services/CS3/applications/service01
+
+litp create_plan
+litp run_plan
+
+# 4. C3 is in an applied state so update the deactivates for CS2
+litp update -p /deployments/test/clusters/cluster1/services/CS3 -o deactivates=CS2
+assertError --err_type ValidationError --err_message "Cannot set deactivates property on a vcs-clustered-service that is not in Initial state." create_plan
+
+# 4. C3 is in an applied state so update the deactivates for CS4 which doesn't exist
+litp update -p /deployments/test/clusters/cluster1/services/CS3 -o deactivates=CS4
+assertError --err_type ValidationError --err_message "Cannot set deactivates property on a vcs-clustered-service that is not in Initial state." create_plan
+
+#5 Delete the deactivates property
+litp update -p /deployments/test/clusters/cluster1/services/CS3 -d deactivates
+assertError --err_type ValidationError --err_message "Cannot update deactivates property on a vcs-clustered-service when deactivation is incomplete." create_plan
+
+#6 Reset deactivates property and run plan to remove the deactivated service CS1
+litp update -p /deployments/test/clusters/cluster1/services/CS3 -o deactivates=CS1
+litp create_plan
+litp run_plan
+assertNone -p /deployments/test/clusters/cluster1/services/CS1
+
+#7 Delete the deactivates property successfully
+litp update -p /deployments/test/clusters/cluster1/services/CS3 -d deactivates
+assertError --err_type DoNothingPlanError --err_message "no tasks were generated" create_plan
+
+#8 Remove the service group and then update the deactivates property
+litp remove -p /deployments/test/clusters/cluster1/services/CS3
+litp create_plan
+litp update -p /deployments/test/clusters/cluster1/services/CS3 -o deactivates=CS2
+assertError --err_type ValidationError --err_message "Cannot set deactivates property on a vcs-clustered-service that is not in Initial state." create_plan
+
+add-plugins plugins/reset_gen_deact_task

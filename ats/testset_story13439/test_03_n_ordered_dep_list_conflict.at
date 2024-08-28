@@ -1,0 +1,22 @@
+runLitpScript ../cluster_common.atlib
+
+litp create_plan
+litp run_plan
+
+# Create 3 services such that the isolated dependency_list is ok, and the isolated initial_online_dependency_list is ok, but combined, there are errors
+# dep_list: cs1->cs3, cs2->cs3. (so order: cs3, cs2, cs1) init_dep_list: cs1->cs2, cs3->cs1 (so order: cs2, cs1, cs3).
+# But combined. cs1 depends on cs3, and cs3 depends on cs1. So need circular dependency error.
+
+litp create -t vcs-clustered-service -p /deployments/test/clusters/cluster1/services/cs1 -o name="service1" active=1 standby=1 node_list="node_1,node_2" dependency_list=cs3 initial_online_dependency_list=cs2
+litp create -t service -p /software/services/service1 -o service_name=service1
+litp inherit -s /software/services/service1 -p /deployments/test/clusters/cluster1/services/cs1/applications/service1
+
+litp create -t vcs-clustered-service -p /deployments/test/clusters/cluster1/services/cs2 -o name="service2" active=1 standby=1 node_list="node_1,node_2" dependency_list=cs3
+litp create -t service -p /software/services/service2 -o service_name=service2
+litp inherit -s /software/services/service2 -p /deployments/test/clusters/cluster1/services/cs2/applications/service2
+
+litp create -t vcs-clustered-service -p /deployments/test/clusters/cluster1/services/cs3 -o name="httpd" active=1 standby=1 node_list="node_1,node_2" initial_online_dependency_list=cs1
+litp create -t service -p /software/services/service3 -o service_name=service3
+litp inherit -s /software/services/service3 -p /deployments/test/clusters/cluster1/services/cs3/applications/service3
+
+assertError --errors_length=1 --err_type ValidationError --err_vpath /deployments/test/clusters/cluster1 --err_message='A circular dependency has been detected between the following vcs-clustered-services: "cs1", "cs2" and "cs3". Check the "initial_online_dependency_list" and the "dependency_list" properties of each clustered-service item to resolve the issue.' create_plan

@@ -1,0 +1,37 @@
+######################################################
+# TORF-128825:
+#     Possible to set "deactivated" property to true on
+#     any applied CS
+# Description:
+#     Test to verify a user cannot use 'deactivated'
+#     property on a applied CS
+# Steps:
+#     Create CS
+#     Create/ Run Plan
+#     Set 'deactivated' property on applied CS
+#     Create/ Run Plan again
+#     Assert errors are received
+# Result:
+#     Applied CS cannot have 'deactivated' property set
+######################################################
+
+# Prerequisite - LITP deployment
+add-plugins plugins/set_deactivated
+runLitpScript ../cluster_common.atlib
+runLitpScript ../add_2_nodes_to_cluster.atlib
+
+# 1. Create CS
+litp create -t vcs-clustered-service -p /deployments/test/clusters/cluster1/services/CS1 -o name=cs1 active=1 standby=1 node_list=node_1,node_2
+litp create -t service -p /software/services/service01 -o service_name=service01
+litp inherit -s /software/services/service01 -p /deployments/test/clusters/cluster1/services/CS1/applications/service01
+
+litp create_plan
+litp run_plan
+
+litp update -p /deployments/test/clusters/cluster1/services/CS1 -o deactivated=true
+
+let __err1 --err_type ValidationError --err_vpath /deployments/test/clusters/cluster1/services/CS1 --err_message 'deactivated property set to "true" on a vcs-clustered-service that has not been deactivated.'
+
+assertError __err1 create_plan
+add-plugins plugins/reset_gen_deact_task
+

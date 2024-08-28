@@ -1,0 +1,27 @@
+runLitpScript ../../cluster_common.atlib
+
+# Create FO service
+litp create -t service -p /software/services/mockFO -o service_name='mockFO'
+litp create -t vcs-clustered-service -p /deployments/test/clusters/cluster1/services/cs1/ -o name="cs1" standby=1 active=1 node_list="node_1,node_2"
+litp inherit -s /software/services/mockFO -p /deployments/test/clusters/cluster1/services/cs1/applications/mock
+litp create -t vip -p /deployments/test/clusters/cluster1/services/cs1/ipaddresses/ip1 -o network_name='mgmt' ipaddress='10.10.10.155'
+
+# Create PL service
+litp create -t service -p /software/services/mockPL -o service_name='mockPL'
+litp create -t vcs-clustered-service -p /deployments/test/clusters/cluster1/services/cs2/ -o name="cs2" standby=0 active=2 node_list="node_1,node_2"
+litp inherit -s /software/services/mockPL -p /deployments/test/clusters/cluster1/services/cs2/applications/mock
+litp create -t vip -p /deployments/test/clusters/cluster1/services/cs2/ipaddresses/ip1 -o network_name='mgmt' ipaddress='10.10.10.156'
+litp create -t vip -p /deployments/test/clusters/cluster1/services/cs2/ipaddresses/ip2 -o network_name='mgmt' ipaddress='10.10.10.157'
+
+litp create_plan
+litp run_plan
+
+# New VIPS
+litp create -t vip -p /deployments/test/clusters/cluster1/services/cs1/ipaddresses/ip2 -o network_name='mgmt' ipaddress='10.10.10.158'
+litp create -t vip -p /deployments/test/clusters/cluster1/services/cs2/ipaddresses/ip3 -o network_name='mgmt' ipaddress='10.10.10.159'
+litp create -t vip -p /deployments/test/clusters/cluster1/services/cs2/ipaddresses/ip4 -o network_name='mgmt' ipaddress='10.10.10.160'
+
+litp create_plan
+
+assertCallbackTask callback_method /deployments/test/clusters/cluster1/services/cs1/ipaddresses/ip2 callback_func=vip_callback callback_class=NetworkResourceHelper network_name=mgmt
+assertCallbackTask callback_method /deployments/test/clusters/cluster1/services/cs2/ipaddresses/ip3 callback_func=vip_callback callback_class=NetworkResourceHelper network_name=mgmt

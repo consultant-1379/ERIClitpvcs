@@ -1,0 +1,29 @@
+######################################################
+#	TORF-128825:
+#		test_12_n_cannot_deactivate_service_listed_as_itself
+#	Description:
+#		Test to verify that a user cannot identify itself for deactivation
+#	Steps:
+#		Create CS in model
+#		Create/ Run Plan
+#		Update CS to deactivate itself
+#		Ensure validation message is received
+#	Result:
+#		CS cannot deactivate itself
+######################################################
+
+runLitpScript ../cluster_common.atlib
+runLitpScript ../add_2_nodes_to_cluster.atlib
+
+litp create -t vcs-clustered-service -p /deployments/test/clusters/cluster1/services/CS1 -o name=cs1 active=1 standby=1 node_list=node_1,node_2
+litp create -t service -p /software/services/service01 -o service_name=service01
+litp inherit -s /software/services/service01 -p /deployments/test/clusters/cluster1/services/CS1/applications/service01
+
+litp create_plan
+litp run_plan
+
+litp update -p /deployments/test/clusters/cluster1/services/CS1 -o deactivates=CS1
+
+let __err1 --err_type ValidationError --err_vpath /deployments/test/clusters/cluster1/services/CS1 --err_message 'deactivates property of a vcs-clustered-service cannot reference itself.'
+
+assertError __err1 create_plan

@@ -1,0 +1,13 @@
+runLitpScript vcs_nic_sg_common.atlib
+# Set up matching nics for node 1 and node 2
+litp create -p /deployments/test/clusters/cluster1/nodes/node_1/network_interfaces/nic_0  -t eth              -o device_name=eth0 macaddress=08:00:27:5B:C1:3F network_name=mgmt ipaddress=10.10.10.101 
+litp create -p /deployments/test/clusters/cluster1/nodes/node_1/network_interfaces/nic_1  -t eth              -o device_name=eth1 macaddress=08:00:27:5B:C1:31 network_name=traffic
+litp create -p /deployments/test/clusters/cluster1/nodes/node_1/network_interfaces/nic_2  -t eth              -o device_name=eth2 macaddress=08:00:27:06:C0:61 network_name=heartbeat1
+litp create -p /deployments/test/clusters/cluster1/nodes/node_1/network_interfaces/nic_3  -t eth              -o device_name=eth3 macaddress=08:00:27:21:7D:BC network_name=heartbeat2
+
+litp create -p /deployments/test/clusters/cluster1/nodes/node_2/network_interfaces/nic_0  -t eth              -o device_name=eth0 macaddress=08:00:27:5B:C1:31 network_name=mgmt ipaddress=10.10.10.102
+litp create -p /deployments/test/clusters/cluster1/nodes/node_2/network_interfaces/nic_1  -t eth              -o device_name=eth1 macaddress=08:00:27:5B:C1:32 network_name=traffic
+litp create -p /deployments/test/clusters/cluster1/nodes/node_2/network_interfaces/nic_2  -t eth              -o device_name=eth2 macaddress=08:00:27:06:C0:62 network_name=heartbeat1
+litp create -p /deployments/test/clusters/cluster1/nodes/node_2/network_interfaces/nic_3  -t eth              -o device_name=eth3 macaddress=08:00:27:21:7D:B3 network_name=heartbeat2
+
+litp create_plan

@@ -1,0 +1,77 @@
+##############
+# This AT is for development testing
+#
+# Goal: check if, during a cluster expansion, with
+#       vcs_seed_threshold property unset the value
+#       used for the seeding threshold is automatically
+#       recalculated.
+#
+# Scenario:
+#       Inherited from cluster_common.atlib
+#
+# Actions:
+#       Add a new node to the cluster
+#
+
+####
+# Bulding the scenario
+#
+assertNoPlan
+add-plugins patch_mco_agent
+runLitpScript cluster_common.atlib
+litp create_plan
+litp run_plan
+
+####
+# Check built scenario
+#
+assertPlanState successful
+assertPropertyUnset -p /deployments/test/clusters/cluster1 -o vcs_seed_threshold
+assertState -p /deployments/test/clusters/cluster1 Applied
+
+####
+# Actions
+#
+
+#
+# Expand the cluster to have 3 nodes
+#
+litp create -t system -p /infrastructure/systems/system_3 -o system_name=MN3VM
+
+litp create -t disk -p /infrastructure/systems/system_3/disks/disk0 -o name=hd0 size=56G bootable=true uuid=c29d5a97a382bbc3564dd03019
+
+litp create -t node -p /deployments/test/clusters/cluster1/nodes/node_3 -o hostname=mn3 node_id=3
+
+litp inherit -p /deployments/test/clusters/cluster1/nodes/node_3/system -s /infrastructure/systems/system_3
+litp inherit -p /deployments/test/clusters/cluster1/nodes/node_3/os -s /software/profiles/rhel_6_4
+litp inherit -p /deployments/test/clusters/cluster1/nodes/node_3/routes/default -s /infrastructure/networking/routes/def
+litp inherit -p /deployments/test/clusters/cluster1/nodes/node_3/storage_profile -s /infrastructure/storage/storage_profiles/profile_1
+
+litp create -t eth -p /deployments/test/clusters/cluster1/nodes/node_3/network_interfaces/nic_0 -o device_name=eth0 macaddress=08:00:27:5B:C1:9F network_name=mgmt ipaddress=10.10.10.103
+litp create -t eth -p /deployments/test/clusters/cluster1/nodes/node_3/network_interfaces/nic_2 -o device_name=eth2 macaddress=08:00:27:06:C0:91 network_name=heartbeat1
+litp create -t eth -p /deployments/test/clusters/cluster1/nodes/node_3/network_interfaces/nic_3 -o device_name=eth3 macaddress=08:00:27:21:7D:DC network_name=heartbeat2
+
+#
+# Create Plan
+#
+litp create_plan
+
+####
+# Pre-run Checks
+#
+assertConfigTask mn1 vcs::configure cluster1 /deployments/test/clusters/cluster1/nodes/node_1 number_of_nodes='2' manage_vxfencing='false' heartbeats_MACs='{"eth3": "08:00:27:21:7D:BC", "eth2": "08:00:27:06:C0:61"}' hostname='mn1' clust_type='sfha' cluster_name='cluster1' fencing_dg_name='null' cluster_ID='1' managment_MAC='{"eth0": "08:00:27:5B:C1:3F"}' cluster_UUID='16f764c0-8637-3668-a788-33d313f8ea20' license_key='ENTERPRISE' hostnames='{"1": "mn1", "0": "mn2", "2": "mn3"}' rpm_list='VRTSveki VRTSperl VRTSvlic VRTSspt VRTSvxvm VRTSaslapm VRTSvxfs VRTSfssdk VRTSllt VRTSgab VRTSvxfen VRTSamf VRTSpython VRTSvcs VRTSvcsag VRTSvcsea VRTSdbed VRTSodm VRTSsfmh VRTSvbs VRTSvcswiz VRTSsfcpi VRTSglm VRTScavf VRTSgms' base_os='rhel6' heartbeats_SAPs='{}' management_SAP='{}' boot_mode='bios'
+assertConfigTask mn2 vcs::configure cluster1 /deployments/test/clusters/cluster1/nodes/node_2 number_of_nodes='2' manage_vxfencing='false' heartbeats_MACs='{"eth3": "08:00:27:21:7D:B3", "eth2": "08:00:27:06:C0:62"}' hostname='mn2' clust_type='sfha' cluster_name='cluster1' fencing_dg_name='null' cluster_ID='1' managment_MAC='{"eth0": "08:00:27:5B:C1:31"}' cluster_UUID='16f764c0-8637-3668-a788-33d313f8ea20' license_key='ENTERPRISE' hostnames='{"1": "mn1", "0": "mn2", "2": "mn3"}' rpm_list='VRTSveki VRTSperl VRTSvlic VRTSspt VRTSvxvm VRTSaslapm VRTSvxfs VRTSfssdk VRTSllt VRTSgab VRTSvxfen VRTSamf VRTSpython VRTSvcs VRTSvcsag VRTSvcsea VRTSdbed VRTSodm VRTSsfmh VRTSvbs VRTSvcswiz VRTSsfcpi VRTSglm VRTScavf VRTSgms' base_os='rhel6' heartbeats_SAPs='{}' management_SAP='{}' boot_mode='bios'
+assertConfigTask mn3 vcs::configure cluster1 /deployments/test/clusters/cluster1/nodes/node_3 number_of_nodes='2' manage_vxfencing='false' heartbeats_MACs='{"eth3": "08:00:27:21:7D:DC", "eth2": "08:00:27:06:C0:91"}' hostname='mn3' clust_type='sfha' cluster_name='cluster1' fencing_dg_name='null' cluster_ID='1' managment_MAC='{"eth0": "08:00:27:5B:C1:9F"}' cluster_UUID='16f764c0-8637-3668-a788-33d313f8ea20' license_key='ENTERPRISE' hostnames='{"1": "mn1", "0": "mn2", "2": "mn3"}' rpm_list='VRTSveki VRTSperl VRTSvlic VRTSspt VRTSvxvm VRTSaslapm VRTSvxfs VRTSfssdk VRTSllt VRTSgab VRTSvxfen VRTSamf VRTSpython VRTSvcs VRTSvcsag VRTSvcsea VRTSdbed VRTSodm VRTSsfmh VRTSvbs VRTSvcswiz VRTSsfcpi VRTSglm VRTScavf VRTSgms' base_os='rhel6' heartbeats_SAPs='{}' management_SAP='{}' boot_mode='bios'
+litp create_plan
+
+#####
+# Run plan
+#
+litp run_plan
+
+#####
+# Post-run Checks
+#
+assertPlanState successful
+assertPropertyUnset -p /deployments/test/clusters/cluster1 -o vcs_seed_threshold
+assertState -p /deployments/test/clusters/cluster1 Applied

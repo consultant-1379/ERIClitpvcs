@@ -1,0 +1,13 @@
+runLitpScript ../../cluster_common.atlib
+
+litp create_plan
+litp run_plan
+
+litp update -p /deployments/test/clusters/cluster1 -o app_agent_num_threads=25
+litp create_plan
+assertTask 0 callback_method cluster1 /deployments/test/clusters/cluster1 Initial 'Update "app_agent_num_threads" property on cluster "cluster1"'
+litp run_plan
+
+litp update -p /deployments/test/clusters/cluster1 -d app_agent_num_threads
+assertError create_plan
+assertNoPlan

@@ -1,0 +1,16 @@
+runLitpScript ../cluster_common.atlib
+
+litp create -t service -p /software/services/mock -o service_name=mock
+
+litp create -t service -p /software/services/mock1 -o service_name=mock1
+litp create -t vcs-clustered-service -p /deployments/test/clusters/cluster1/services/cs1 -o name=cs1 active=1 standby=1 node_list=node_1,node_2
+litp inherit -s /software/services/mock -p /deployments/test/clusters/cluster1/services/cs1/applications/mock
+litp create -t vcs-trigger -p /deployments/test/clusters/cluster1/services/cs1/triggers/t1 -o trigger_type="nofailover"
+
+litp create_plan
+litp run_plan
+
+# confirm that no tasks generated with new create_plan
+assertError --err_message 'Create plan failed: no tasks were generated' create_plan
+
+

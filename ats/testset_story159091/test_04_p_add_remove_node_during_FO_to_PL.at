@@ -1,0 +1,16 @@
+# Test to verify that a user can update their FO clustered services to PL
+# while adding or removing nodes from to/from the node_list
+
+runLitpScript ../testset_common/three_nodes_common.atlib
+
+litp create -t service -p /software/services/mock1 -o service_name='mocklsb1'
+litp create -t vcs-clustered-service -p /deployments/test/clusters/cluster1/services/cs1/ -o name="cs1" standby=1 active=1 node_list="node_1,node_2"
+litp inherit -s /software/services/mock1 -p /deployments/test/clusters/cluster1/services/cs1/applications/mock
+
+litp create_plan
+litp run_plan
+
+litp update -p /deployments/test/clusters/cluster1/services/cs1/ -o standby=0 active=2 node_list="node_1,node_3"
+
+litp create_plan
+litp run_plan

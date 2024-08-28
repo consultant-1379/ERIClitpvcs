@@ -1,0 +1,42 @@
+######################################################
+# TORF-128825:
+#     test_35_p_deactivate_CS_set_as_fo_removal
+# Description:
+#     Test to verify that a user can deactivate a CS that is set to for removal
+# Steps:
+#     Create CS_1
+#     Create/ Run Plan
+#     Remove CS_1 (now in state for removal)
+#     Create CS_2 that attempts to deactivate CS_1
+#     Create/ Run plan
+#     Assert validation error is received
+# Result:
+#     Validate error is received when trying to deactivate a service that is
+#     for removal
+######################################################
+
+# Prerequisite - LITP deployment
+runLitpScript ../cluster_common.atlib
+runLitpScript ../add_2_nodes_to_cluster.atlib
+
+# 1. Create failover service group CS1
+litp create -t vcs-clustered-service -p /deployments/test/clusters/cluster1/services/CS1 -o name=cs1 active=1 standby=1 node_list=node_1,node_2
+litp create -t service -p /software/services/service01 -o service_name=service01
+litp inherit -s /software/services/service01 -p /deployments/test/clusters/cluster1/services/CS1/applications/service01
+
+# 2. Create and run plan
+litp create_plan
+litp run_plan
+
+# 3. Remove CS1 so it moves to ForRemoval state
+litp remove -p /deployments/test/clusters/cluster1/services/CS1
+
+assertState -p /deployments/test/clusters/cluster1/services/CS1 ForRemoval
+
+# 4. Create service group CS2 that deactivates CS1
+litp create -t vcs-clustered-service -p /deployments/test/clusters/cluster1/services/CS2 -o name=cs2 active=1 standby=1 node_list=node_3,node_4 deactivates=CS1
+litp create -t service -p /software/services/service02 -o service_name=service02
+litp inherit -s /software/services/service02 -p /deployments/test/clusters/cluster1/services/CS2/applications/service02
+
+# 5. Create and Run plan
+assertError --err_type ValidationError --err_vpath /deployments/test/clusters/cluster1/services/CS2 --err_message 'deactivates property cannot reference a vcs-clustered-service that is not in Applied state.' create_plan

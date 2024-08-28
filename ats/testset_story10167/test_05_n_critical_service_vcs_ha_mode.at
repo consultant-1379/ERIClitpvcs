@@ -1,0 +1,18 @@
+# Test Case 05.
+
+# To ensure that it is not possible to create, a "vcs-cluster" with "critical_service" property present
+# and belonging to "clustered-service" using ha mode different than failover(active=1 standby=1).
+# (Manual - Run once, should be covered in AT's.)
+
+# 1. Create a "vcs-cluster" with "critical_service" property
+runLitpScript ../testset_common/common.atlib
+litp update -p /deployments/test/clusters/cluster1 -o critical_service='cs1' cluster_type=sfha
+
+
+# 2. Create test service two in parallel ha mode
+litp create -t service -p /software/services/mock -o service_name='mocklsb'
+litp create -t vcs-clustered-service -p /deployments/test/clusters/cluster1/services/cs1/ -o name="cs1" standby=0 active=2 node_list="node_1,node_2"
+litp inherit -s /software/services/mock -p /deployments/test/clusters/cluster1/services/cs1/applications/mock
+
+# 3. Create plan and assert for Validation Error message.
+assertError --err_message 'The vcs-clustered-service "cs1" must have active=1 standby=1 to be a critical service.' --err_vpath /deployments/test/clusters/cluster1 create_plan

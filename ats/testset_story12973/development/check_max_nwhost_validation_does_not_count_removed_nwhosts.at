@@ -1,0 +1,25 @@
+runLitpScript ../../cluster_common.atlib
+
+# Create 10 vcs-network-host items
+litp create -t vcs-network-host -p /deployments/test/clusters/cluster1/network_hosts/network_host_1 -o network_name=mgmt ip=192.168.100.1
+litp create -t vcs-network-host -p /deployments/test/clusters/cluster1/network_hosts/network_host_2 -o network_name=mgmt ip=192.168.100.2
+litp create -t vcs-network-host -p /deployments/test/clusters/cluster1/network_hosts/network_host_3 -o network_name=mgmt ip=192.168.100.3
+litp create -t vcs-network-host -p /deployments/test/clusters/cluster1/network_hosts/network_host_4 -o network_name=mgmt ip=192.168.100.4
+litp create -t vcs-network-host -p /deployments/test/clusters/cluster1/network_hosts/network_host_5 -o network_name=mgmt ip=192.168.100.5
+litp create -t vcs-network-host -p /deployments/test/clusters/cluster1/network_hosts/network_host_6 -o network_name=mgmt ip=192.168.100.6
+litp create -t vcs-network-host -p /deployments/test/clusters/cluster1/network_hosts/network_host_7 -o network_name=mgmt ip=192.168.100.7
+litp create -t vcs-network-host -p /deployments/test/clusters/cluster1/network_hosts/network_host_8 -o network_name=mgmt ip=192.168.100.8
+litp create -t vcs-network-host -p /deployments/test/clusters/cluster1/network_hosts/network_host_9 -o network_name=mgmt ip=192.168.100.9
+litp create -t vcs-network-host -p /deployments/test/clusters/cluster1/network_hosts/network_host_10 -o network_name=mgmt ip=192.168.100.10
+
+# create and run the plan
+litp create_plan
+litp run_plan
+
+# Remove 2 items and add another 2
+litp remove -p /deployments/test/clusters/cluster1/network_hosts/network_host_1
+litp remove -p /deployments/test/clusters/cluster1/network_hosts/network_host_2
+litp create -t vcs-network-host -p /deployments/test/clusters/cluster1/network_hosts/network_host_11 -o network_name=mgmt ip=192.168.100.11
+litp create -t vcs-network-host -p /deployments/test/clusters/cluster1/network_hosts/network_host_12 -o network_name=mgmt ip=192.168.100.12
+
+litp create_plan

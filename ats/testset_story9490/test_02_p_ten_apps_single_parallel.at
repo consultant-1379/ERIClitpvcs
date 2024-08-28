@@ -1,0 +1,50 @@
+# Test Case 02
+#
+# To ensure that it is possible to specify, and deploy, a
+# vcs-clustered-services containing 10 multiple services in single nodes
+# parallel mode(1:0).
+
+# Prerequisite - LITP Deployment
+runLitpScript ../testset_common/common.atlib
+
+# 1. Create a one node service group
+litp create -t vcs-clustered-service -p /deployments/test/clusters/cluster1/services/CS1 -o name=cs1 active=1 standby=0 node_list=node_1
+
+# 2. Create the 10 services
+litp create -t service -p /software/services/service00 -o service_name=service00
+litp create -t service -p /software/services/service01 -o service_name=service01
+litp create -t service -p /software/services/service02 -o service_name=service02
+litp create -t service -p /software/services/service03 -o service_name=service03
+litp create -t service -p /software/services/service04 -o service_name=service04
+litp create -t service -p /software/services/service05 -o service_name=service05
+litp create -t service -p /software/services/service06 -o service_name=service06
+litp create -t service -p /software/services/service07 -o service_name=service07
+litp create -t service -p /software/services/service08 -o service_name=service08
+litp create -t service -p /software/services/service09 -o service_name=service09
+
+# 3. Inherit the services in to the one node service group
+litp inherit -s /software/services/service00 -p /deployments/test/clusters/cluster1/services/CS1/applications/service00
+litp inherit -s /software/services/service01 -p /deployments/test/clusters/cluster1/services/CS1/applications/service01
+litp inherit -s /software/services/service02 -p /deployments/test/clusters/cluster1/services/CS1/applications/service02
+litp inherit -s /software/services/service03 -p /deployments/test/clusters/cluster1/services/CS1/applications/service03
+litp inherit -s /software/services/service04 -p /deployments/test/clusters/cluster1/services/CS1/applications/service04
+litp inherit -s /software/services/service05 -p /deployments/test/clusters/cluster1/services/CS1/applications/service05
+litp inherit -s /software/services/service06 -p /deployments/test/clusters/cluster1/services/CS1/applications/service06
+litp inherit -s /software/services/service07 -p /deployments/test/clusters/cluster1/services/CS1/applications/service07
+litp inherit -s /software/services/service08 -p /deployments/test/clusters/cluster1/services/CS1/applications/service08
+litp inherit -s /software/services/service09 -p /deployments/test/clusters/cluster1/services/CS1/applications/service09
+
+# 4. Create ha-service-configs for the services
+litp create -t ha-service-config -p /deployments/test/clusters/cluster1/services/CS1/ha_configs/s00 -o service_id=service00 dependency_list=service01,service02
+litp create -t ha-service-config -p /deployments/test/clusters/cluster1/services/CS1/ha_configs/s01 -o service_id=service01 dependency_list=service03,service04
+litp create -t ha-service-config -p /deployments/test/clusters/cluster1/services/CS1/ha_configs/s02 -o service_id=service02 dependency_list=service03,service05
+litp create -t ha-service-config -p /deployments/test/clusters/cluster1/services/CS1/ha_configs/s03 -o service_id=service03 dependency_list=service07
+litp create -t ha-service-config -p /deployments/test/clusters/cluster1/services/CS1/ha_configs/s04 -o service_id=service04 dependency_list=service08
+litp create -t ha-service-config -p /deployments/test/clusters/cluster1/services/CS1/ha_configs/s05 -o service_id=service05 dependency_list=service09
+litp create -t ha-service-config -p /deployments/test/clusters/cluster1/services/CS1/ha_configs/s06 -o service_id=service06
+litp create -t ha-service-config -p /deployments/test/clusters/cluster1/services/CS1/ha_configs/s07 -o service_id=service07
+litp create -t ha-service-config -p /deployments/test/clusters/cluster1/services/CS1/ha_configs/s08 -o service_id=service08
+litp create -t ha-service-config -p /deployments/test/clusters/cluster1/services/CS1/ha_configs/s09 -o service_id=service09
+
+# 5. Validate that can create plan with 10 apps on a one node service group
+litp create_plan

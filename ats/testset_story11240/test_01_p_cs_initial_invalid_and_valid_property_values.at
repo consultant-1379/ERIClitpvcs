@@ -1,0 +1,33 @@
+# test_01_p_cs_initial_invalid_and_valid_property_values.at
+
+# Description:
+#
+# Verify the new property, cs_initial_online, type and acceptable values.
+#
+# Test Steps:
+#
+# 1. Assert the cs_initial_online property value is set to on
+# 2. Attempt a litp update command on the cs_initial_online property value, using an invalid value and assert a property validation error.
+# 3. Attempt a litp update command on the cs_initial_online property value with invalid case
+# 4. Test valid values
+
+# Prerequisite - LITP Deployment
+runLitpScript ../cluster_common.atlib
+
+# 1. Assert the cs_initial_online property value is set to on
+assertProperty  /deployments/test/clusters/cluster1 -o cs_initial_online="on"
+
+# 2. Attempt a litp update command on the cs_initial_online property value, using an invalid value and assert a property validation error.
+assertError update -p /deployments/test/clusters/cluster1 -o cs_initial_online=True
+assertError update -p /deployments/test/clusters/cluster1 -o cs_initial_online=False
+assertError update -p /deployments/test/clusters/cluster1 -o cs_initial_online="pn"
+assertError update -p /deployments/test/clusters/cluster1 -o cs_initial_online="son"
+assertError update -p /deployments/test/clusters/cluster1 -o cs_initial_online="onm"
+
+# 3. Attempt a litp update command on the cs_initial_online property value with invalid case
+assertError update -p /deployments/test/clusters/cluster1 -o cs_initial_online="On"
+assertError update -p /deployments/test/clusters/cluster1 -o cs_initial_online="Off"
+
+# test valid values
+litp update -p /deployments/test/clusters/cluster1 -o cs_initial_online="on"
+litp update -p /deployments/test/clusters/cluster1 -o cs_initial_online="off"

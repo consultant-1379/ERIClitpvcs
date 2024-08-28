@@ -1,0 +1,32 @@
+runLitpScript ../cluster_common.atlib
+
+litp create -t service -p /software/services/mock -o service_name=mock
+
+litp create -t vcs-clustered-service -p /deployments/test/clusters/cluster1/services/cs1 -o name=cs1 active=1 standby=1 node_list=node_1,node_2
+litp inherit -s /software/services/mock -p /deployments/test/clusters/cluster1/services/cs1/applications/mock
+
+# Get into an applied state, to ensure node locks
+litp create_plan
+litp run_plan
+
+litp create -t vcs-trigger -p /deployments/test/clusters/cluster1/services/cs1/triggers/t1 -o trigger_type="nofailover"
+
+litp create_plan
+
+# Fail first unlock
+failCallbackTask unlock_node /deployments/test/clusters/cluster1/nodes/node_2
+litp run_plan
+
+# Now that we have a failed plan let's run again
+
+litp create_plan
+assertCallbackTask callback_method /deployments/test/clusters/cluster1/services/cs1/triggers/t1 callback_func=enable_or_disable_trigger_cb callback_class=VcsCluster group_name=Grp_CS_cluster1_cs1 cluster_vpath=/deployments/test/clusters/cluster1 trigger_type=nofailover delete=False
+
+litp remove -p /deployments/test/clusters/cluster1/services/cs1/triggers/t1
+litp create_plan
+
+assertCallbackTask callback_method /deployments/test/clusters/cluster1/services/cs1/triggers/t1 callback_func=enable_or_disable_trigger_cb callback_class=VcsCluster group_name=Grp_CS_cluster1_cs1 cluster_vpath=/deployments/test/clusters/cluster1 trigger_type=nofailover delete=True
+assertConfigTask mn1 vcs::remove_nofailover_trigger cluster1 /deployments/test/clusters/cluster1/nodes/node_1
+assertConfigTask mn2 vcs::remove_nofailover_trigger cluster1 /deployments/test/clusters/cluster1/nodes/node_2
+assertCallbackTask callback_method /deployments/test/clusters/cluster1/services/cs1 callback_func=online_callback callback_class=VcsSGOnlineHelper vcs_grp_name=Grp_CS_cluster1_cs1 service_vpath=/deployments/test/clusters/cluster1/services/cs1
+

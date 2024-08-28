@@ -1,0 +1,30 @@
+runLitpScript ../../cluster_common.atlib
+
+# Create PL service
+litp create -t service -p /software/services/mockPL -o service_name='mockPL'
+litp create -t vcs-clustered-service -p /deployments/test/clusters/cluster1/services/cs1/ -o name="cs1" standby=0 active=1 node_list="node_1"
+litp inherit -s /software/services/mockPL -p /deployments/test/clusters/cluster1/services/cs1/applications/mock
+litp create -t vip -p /deployments/test/clusters/cluster1/services/cs1/ipaddresses/ip1 -o network_name='mgmt' ipaddress='10.10.10.156'
+litp create -t vip -p /deployments/test/clusters/cluster1/services/cs1/ipaddresses/ip2 -o network_name='mgmt' ipaddress='10.10.10.157'
+
+# Create new network
+litp create -p /infrastructure/networking/networks/new_network -t network -o name=new_network subnet=192.168.0.0/24
+litp create -p /ms/network_interfaces/if10 -t eth -o network_name=new_network ipaddress=192.168.0.42 macaddress=bb:bb:bb:bb:bb:bb device_name=eth10
+litp create -p /deployments/test/clusters/cluster1/nodes/node_1/network_interfaces/nic_10  -t eth -o device_name=eth10 macaddress=08:00:27:5B:C1:4F network_name=new_network ipaddress=10.10.10.43
+litp create -p /deployments/test/clusters/cluster1/nodes/node_2/network_interfaces/nic_10  -t eth -o device_name=eth10 macaddress=08:00:27:5B:C1:4F network_name=new_network ipaddress=10.10.10.44
+
+litp create_plan
+litp run_plan
+
+# Expand service
+litp update -p /deployments/test/clusters/cluster1/services/cs1 -o active=2 node_list="node_1,node_2"
+
+# New VIPS
+litp create -t vip -p /deployments/test/clusters/cluster1/services/cs1/ipaddresses/ip3 -o network_name='mgmt' ipaddress='10.10.10.158'
+litp create -t vip -p /deployments/test/clusters/cluster1/services/cs1/ipaddresses/ip4 -o network_name='mgmt' ipaddress='10.10.10.159'
+litp create -t vip -p /deployments/test/clusters/cluster1/services/cs1/ipaddresses/ip5 -o network_name='new_network' ipaddress='192.168.0.10'
+
+let __err_1 --err_type ValidationError --err_message 'Create plan failed: The number of "IPv4" VIP items for network "new_network" must be a multiple of active property of vcs-clustered-service "cs1".' --err_vpath /deployments/test/clusters/cluster1/services/cs1
+let __err_2 --err_type ValidationError --err_message 'The number of "IPv4" VIP items per node for network "new_network" in vcs-clustered-service "cs1" must be the same after change of active property from "1" to "2".' --err_vpath /deployments/test/clusters/cluster1/services/cs1
+
+assertError __err_1 __err_2 --errors_length 2 create_plan

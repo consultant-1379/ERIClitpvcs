@@ -1,0 +1,31 @@
+runLitpScript ../../cluster_common.atlib
+
+# Using mgmt interface and default route
+
+litp update -p /infrastructure/networking/routes/def -o gateway=10.10.10.254
+
+litp create -t vcs-network-host -p /deployments/test/clusters/cluster1/network_hosts/net1 -o network_name="mgmt" ip="10.10.10.102"
+
+litp create_plan
+litp run_plan
+
+# Remove network hosts
+
+litp remove -p /deployments/test/clusters/cluster1/network_hosts/net1
+
+litp create_plan
+# Check if clean the Networkhost
+assertCallbackTask callback_method /deployments/test/clusters/cluster1/nodes/node_1/network_interfaces/nic_0 callback_func=update_network_hosts callback_class=VCSNICServiceGroupUpdateHelper resource=Res_NIC_cluster1_eth0 sys=mn1 addresses='[]'
+assertCallbackTask callback_method /deployments/test/clusters/cluster1/nodes/node_2/network_interfaces/nic_0 callback_func=update_network_hosts callback_class=VCSNICServiceGroupUpdateHelper resource=Res_NIC_cluster1_eth0 sys=mn2 addresses='[]'
+
+
+litp run_plan
+
+# Now create a network host and make sure the route (.254) is not used
+
+litp create -t vcs-network-host -p /deployments/test/clusters/cluster1/network_hosts/net1 -o network_name="mgmt" ip="100.100.100.102"
+
+litp create_plan
+assertCallbackTask callback_method /deployments/test/clusters/cluster1/nodes/node_1/network_interfaces/nic_0 callback_func=update_network_hosts callback_class=VCSNICServiceGroupUpdateHelper resource=Res_NIC_cluster1_eth0 sys=mn1 addresses='["100.100.100.102"]'
+assertCallbackTask callback_method /deployments/test/clusters/cluster1/nodes/node_2/network_interfaces/nic_0 callback_func=update_network_hosts callback_class=VCSNICServiceGroupUpdateHelper resource=Res_NIC_cluster1_eth0 sys=mn2 addresses='["100.100.100.102"]'
+

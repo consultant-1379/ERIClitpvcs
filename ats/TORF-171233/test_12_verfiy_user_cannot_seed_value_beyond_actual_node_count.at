@@ -1,0 +1,9 @@
+runLitpScript ../cluster_common.atlib
+
+litp create_plan
+litp run_plan
+
+litp update -p /deployments/test/clusters/cluster1 -o vcs_seed_threshold=10
+
+#Verify the Error that vcs seed threshold value cannot be set to anything above the amount of nodes in the cluster. 
+assertError --err_vpath /deployments/test/clusters/cluster1 --err_message "Create plan failed: Property 'vcs_seed_threshold' must be set to a value from 1 up to the number of nodes in the cluster (2 nodes)." create_plan

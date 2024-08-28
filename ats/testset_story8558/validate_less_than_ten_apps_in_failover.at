@@ -1,0 +1,47 @@
+# Quick note - the parallel functionality is tested by existing ats
+runLitpScript ../cluster_common.atlib
+
+# Create a failover service group
+litp create -t vcs-clustered-service -p /deployments/test/clusters/cluster1/services/CS1 -o name=cs1 -o node_list=node_1,node_2 active=1 standby=1
+
+# Create the services
+litp create -t service -p /software/services/service00 -o service_name=service00
+litp create -t service -p /software/services/service01 -o service_name=service01
+litp create -t service -p /software/services/service02 -o service_name=service02
+litp create -t service -p /software/services/service03 -o service_name=service03
+litp create -t service -p /software/services/service04 -o service_name=service04
+litp create -t service -p /software/services/service05 -o service_name=service05
+litp create -t service -p /software/services/service06 -o service_name=service06
+litp create -t service -p /software/services/service07 -o service_name=service07
+litp create -t service -p /software/services/service08 -o service_name=service08
+litp create -t service -p /software/services/service09 -o service_name=service09
+
+# Check 10 work
+litp inherit -s /software/services/service00 -p /deployments/test/clusters/cluster1/services/CS1/applications/service00
+litp create -t ha-service-config -p /deployments/test/clusters/cluster1/services/CS1/ha_configs/s00 -o service_id=service00
+litp inherit -s /software/services/service01 -p /deployments/test/clusters/cluster1/services/CS1/applications/service01
+litp create -t ha-service-config -p /deployments/test/clusters/cluster1/services/CS1/ha_configs/s01 -o service_id=service01
+litp inherit -s /software/services/service02 -p /deployments/test/clusters/cluster1/services/CS1/applications/service02
+litp create -t ha-service-config -p /deployments/test/clusters/cluster1/services/CS1/ha_configs/s02 -o service_id=service02
+litp inherit -s /software/services/service03 -p /deployments/test/clusters/cluster1/services/CS1/applications/service03
+litp create -t ha-service-config -p /deployments/test/clusters/cluster1/services/CS1/ha_configs/s03 -o service_id=service03
+litp inherit -s /software/services/service04 -p /deployments/test/clusters/cluster1/services/CS1/applications/service04
+litp create -t ha-service-config -p /deployments/test/clusters/cluster1/services/CS1/ha_configs/s04 -o service_id=service04
+litp inherit -s /software/services/service05 -p /deployments/test/clusters/cluster1/services/CS1/applications/service05
+litp create -t ha-service-config -p /deployments/test/clusters/cluster1/services/CS1/ha_configs/s05 -o service_id=service05
+litp inherit -s /software/services/service06 -p /deployments/test/clusters/cluster1/services/CS1/applications/service06
+litp create -t ha-service-config -p /deployments/test/clusters/cluster1/services/CS1/ha_configs/s06 -o service_id=service06
+litp inherit -s /software/services/service07 -p /deployments/test/clusters/cluster1/services/CS1/applications/service07
+litp create -t ha-service-config -p /deployments/test/clusters/cluster1/services/CS1/ha_configs/s07 -o service_id=service07
+litp inherit -s /software/services/service08 -p /deployments/test/clusters/cluster1/services/CS1/applications/service08
+litp create -t ha-service-config -p /deployments/test/clusters/cluster1/services/CS1/ha_configs/s08 -o service_id=service08
+litp inherit -s /software/services/service09 -p /deployments/test/clusters/cluster1/services/CS1/applications/service09
+litp create -t ha-service-config -p /deployments/test/clusters/cluster1/services/CS1/ha_configs/s09 -o service_id=service09
+
+litp create_plan
+
+# Make an 11th
+litp create -t service -p /software/services/service10 -o service_name=service10
+litp inherit -s /software/services/service10 -p /deployments/test/clusters/cluster1/services/CS1/applications/service10
+litp create -t ha-service-config -p /deployments/test/clusters/cluster1/services/CS1/ha_configs/s10 -o service_id=service10
+assertError --err_message 'Number of services in vcs-clustered-service "cs1" exceeds maximum number of 10' --err_vpath /deployments/test/clusters/cluster1/services/CS1 --errors_length 1 create_plan

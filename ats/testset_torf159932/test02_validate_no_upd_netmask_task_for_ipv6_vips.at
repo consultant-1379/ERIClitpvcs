@@ -1,0 +1,20 @@
+# Create service a service with a VIP containing an IPv6 address only and deploy
+# Update the subnet of the network belonging to the network
+# Verify that no tasks are generated when create_plan is executed
+#
+runLitpScript ../cluster_common.atlib
+
+litp create_plan
+litp run_plan
+
+litp create -t service -p /software/services/mock -o service_name=mocklsb
+litp create -t vcs-clustered-service -p /deployments/test/clusters/cluster1/services/cs1 -o name="cs1" active=1 standby=1 node_list="node_1,node_2"
+litp inherit -s /software/services/mock -p /deployments/test/clusters/cluster1/services/cs1/applications/mock
+litp create -t vip -p /deployments/test/clusters/cluster1/services/cs1/ipaddresses/ip2 -o network_name='mgmt' ipaddress='2001:abcd:ef::3/64'
+
+litp create_plan
+litp run_plan
+
+litp update -p /infrastructure/networking/networks/mgmt -o subnet=10.10.10.0/23
+
+assertError --err_type DoNothingPlanError --err_message "Create plan failed: no tasks were generated" create_plan

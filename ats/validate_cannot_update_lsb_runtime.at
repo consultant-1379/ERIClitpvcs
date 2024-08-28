@@ -1,0 +1,10 @@
+
+runLitpScript cluster_common_with_sg.atlib
+
+litp create_plan
+litp run_plan
+
+litp update -p /deployments/test/clusters/cluster1/services/CS1 -o online_timeout=200
+
+assertError --err_message 'Can not update a vcs-clustered-service that contains lsb-runtimes' create_plan
+

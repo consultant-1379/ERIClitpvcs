@@ -1,0 +1,21 @@
+<?xml version='1.0' encoding='utf-8'?>
+<litp:vcs-clustered-service xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:litp="http://www.ericsson.com/litp" xsi:schemaLocation="http://www.ericsson.com/litp litp-xml-schema/litp.xsd" id="nfs">
+  <active>2</active> 
+  <dependency_list></dependency_list>
+  <name>nfs</name>
+  <node_list>node_1,node_2</node_list>
+  <standby>0</standby>
+  <litp:clustered-service-applications-collection id="applications">
+    <litp:service-inherit source_path="/software/services/nfs" id="nfs">
+      <litp:service-packages-collection-inherit source_path="/software/services/nfs/packages" id="packages"/>
+    </litp:service-inherit>
+  </litp:clustered-service-applications-collection>
+  <litp:clustered-service-ha_configs-collection id="ha_configs"/>
+  <litp:clustered-service-runtimes-collection id="runtimes"/>
+  <offline_timeout>300</offline_timeout>
+  <online_timeout>300</online_timeout>
+  <litp:vcs-clustered-service-filesystems-collection id="filesystems"/>
+  <litp:vcs-clustered-service-ipaddresses-collection id="ipaddresses"/>
+  <litp:vcs-clustered-service-triggers-collection id="triggers"/>
+</litp:vcs-clustered-service>
+

@@ -1,0 +1,32 @@
+runLitpScript cluster_common.atlib
+
+litp create_plan
+litp run_plan
+
+litp create -t eth -p /deployments/test/clusters/cluster1/nodes/node_1/network_interfaces/nic_1 -o device_name=eth1 macaddress=08:00:27:06:C0:23 master=bond0
+litp update -p /deployments/test/clusters/cluster1/nodes/node_1/network_interfaces/nic_0 -d ipaddress network_name
+litp update -p /deployments/test/clusters/cluster1/nodes/node_1/network_interfaces/nic_0 -o master=bond0
+litp create -t bond -p /deployments/test/clusters/cluster1/nodes/node_1/network_interfaces/b0 -o device_name=bond0 ipaddress=10.10.10.106 network_name=mgmt mode=1 miimon=100
+
+# Force the creation of the node lock/unlock tasks
+litp create -t package -p /software/items/pkg1 -o name=pkg1
+litp inherit -s /software/items/pkg1 -p /deployments/test/clusters/cluster1/nodes/node_1/items/pkg1
+
+litp create_plan
+
+assertCallbackTask callback_method /deployments/test/clusters/cluster1 callback_func=_remove_node_from_nicgrp_callback callback_class=VCSNICServiceGroupUpdateHelper nic_group=eth0 nodes='["mn1"]' cluster_vpath=/deployments/test/clusters/cluster1
+assertCallbackTask callback_method /deployments/test/clusters/cluster1 callback_func=add_nicgrp_callback callback_class=VcsNICServiceGroupHelper nic_name=bond0 cluster_item_id=cluster1 mii='0'
+
+let __task_update_nic CallbackTask callback_method /deployments/test/clusters/cluster1 callback_func=_remove_node_from_nicgrp_callback callback_class=VCSNICServiceGroupUpdateHelper nic_group=eth0 nodes='["mn1"]' cluster_vpath=/deployments/test/clusters/cluster1
+let __task_create_nic CallbackTask callback_method /deployments/test/clusters/cluster1 callback_func=add_nicgrp_callback callback_class=VcsNICServiceGroupHelper nic_name=bond0 cluster_item_id=cluster1 mii='0'
+
+let __task_lock_node1 CallbackTask lock_node /deployments/test/clusters/cluster1/nodes/node_1
+let __task_unlock_node1 CallbackTask unlock_node /deployments/test/clusters/cluster1/nodes/node_1
+
+# Check update nic SystemList property is created before node lock
+assertTaskBeforeTask __task_update_nic __task_lock_node1
+assertTaskBeforeTask __task_update_nic __task_unlock_node1
+
+# Check create nic group is created after node lock
+assertTaskBeforeTask __task_lock_node1 __task_create_nic
+assertTaskBeforeTask __task_unlock_node1 __task_create_nic

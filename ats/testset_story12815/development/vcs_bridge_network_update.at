@@ -1,0 +1,13 @@
+runLitpScript ../../cluster_common.atlib
+
+litp update -p /deployments/test/clusters/cluster1/nodes/node_1/network_interfaces/nic_0 -o bridge=br0 -d network_name ipaddress
+litp create -p /deployments/test/clusters/cluster1/nodes/node_1/network_interfaces/br0 -t bridge -o device_name=br0 ipaddress='10.10.10.101' forwarding_delay=4 network_name='mgmt'
+
+litp create_plan
+litp run_plan
+
+
+litp update -p /deployments/test/clusters/cluster1/nodes/node_1/network_interfaces/nic_0 -o macaddress=08:00:27:21:7D:DD
+assertState -p /deployments/test/clusters/cluster1/nodes/node_1/network_interfaces/nic_0 Updated
+let __no_tasks_error --err_type DoNothingPlanError --err_msg Create plan failed: no tasks were generated
+assertError __no_tasks_error create_plan

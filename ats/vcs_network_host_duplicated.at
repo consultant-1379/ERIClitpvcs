@@ -1,0 +1,21 @@
+runLitpScript cluster_common.atlib
+
+litp create -t vcs-network-host -p /deployments/test/clusters/cluster1/network_hosts/net1 -o network_name="mgmt" ip="192.168.100.1"
+litp create -t vcs-network-host -p /deployments/test/clusters/cluster1/network_hosts/net2 -o network_name="mgmt" ip="192.168.100.2"
+litp create -t vcs-network-host -p /deployments/test/clusters/cluster1/network_hosts/net3 -o network_name="mgmt" ip="192.168.100.1"
+
+assertError --err_message 'The network_name "mgmt" and ip "192.168.100.1" have already been defined in: "/deployments/test/clusters/cluster1/network_hosts/net3"' create_plan
+
+# Remove the duplicate to allow successfully run create_plan
+litp remove -p /deployments/test/clusters/cluster1/network_hosts/net3
+
+# Check that two ipv6 duplicate IPv6 addresses are not allowed into model
+litp create -t vcs-network-host -p /deployments/test/clusters/cluster1/network_hosts/net4 -o network_name="mgmt" ip="2001:ABCD:F0::10"
+litp create -t vcs-network-host -p /deployments/test/clusters/cluster1/network_hosts/net5 -o network_name="mgmt" ip="2001:abcd:f0::10"
+
+assertError --err_message 'The network_name "mgmt" and ip "2001:abcd:f0::10" have already been defined in: "/deployments/test/clusters/cluster1/network_hosts/net5"' create_plan
+
+litp remove -p /deployments/test/clusters/cluster1/network_hosts/net5
+
+litp create_plan
+litp run_plan

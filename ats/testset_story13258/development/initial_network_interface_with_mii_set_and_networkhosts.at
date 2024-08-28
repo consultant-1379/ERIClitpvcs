@@ -1,0 +1,12 @@
+# Cluster_common lib creates an eth0 network_interface with one network host for this interface.
+# default_nic_monitor is set to "mii" and "mii" is set to "netstat" for this service group as there is a network hosts
+#
+
+runLitpScript ../../cluster_common.atlib
+
+litp update -p /deployments/test/clusters/cluster1 -o default_nic_monitor="mii"
+litp create -t vcs-network-host -p /deployments/test/clusters/cluster1/network_hosts/net1 -o network_name="mgmt" ip="100.100.100.102"
+litp create_plan
+
+assertCallbackTask callback_method /deployments/test/clusters/cluster1 callback_func=add_nicgrp_callback callback_class=VcsNICServiceGroupHelper nic_name=eth0 cluster_item_id=cluster1 mii='0' 
+

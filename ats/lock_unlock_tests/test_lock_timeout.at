@@ -1,0 +1,26 @@
+add-plugins mock_plugin
+add-extensions mock_plugin
+runLitpScript ../cluster_common.atlib
+
+litp create -t service -p /software/services/service1 -o service_name=service1
+
+# Create a vcs clustered service.
+litp create -t vcs-clustered-service -p /deployments/test/clusters/cluster1/services/cs1 -o active=1 standby=1 name="cs1" node_list="node_1,node_2" online_timeout=400 offline_timeout=400
+litp inherit -s /software/services/service1 -p /deployments/test/clusters/cluster1/services/cs1/applications/service1
+
+litp create_plan
+litp run_plan
+
+# Now let's trigger a lock
+litp create -t mock-service -p /software/services/trigger -o service_name=mock_trigger
+litp inherit -s /software/services/trigger -p /deployments/test/clusters/cluster1/nodes/node_1/services/trigger
+litp inherit -s /software/services/trigger -p /deployments/test/clusters/cluster1/nodes/node_2/services/trigger
+
+litp create_plan
+
+# Assert we have the right lock/unlock times for each
+assertCallbackTask lock_node /deployments/test/clusters/cluster1/nodes/node_1 timeout=870 switch_timeout=60
+assertCallbackTask unlock_node /deployments/test/clusters/cluster1/nodes/node_1 timeout=410
+
+assertCallbackTask lock_node /deployments/test/clusters/cluster1/nodes/node_2 timeout=870 switch_timeout=60
+assertCallbackTask unlock_node /deployments/test/clusters/cluster1/nodes/node_2 timeout=410

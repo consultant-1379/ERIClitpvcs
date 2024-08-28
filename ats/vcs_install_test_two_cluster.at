@@ -1,0 +1,34 @@
+runLitpScript cluster_common.atlib
+
+litp create -p /infrastructure/systems/system_3                           -t system           -o system_name=MN3VM
+litp create -p /infrastructure/systems/system_4                           -t system           -o system_name=MN4VM
+
+# Setup 2nd Cluster
+litp create -p /deployments/test/clusters/cluster2                                          -t vcs-cluster      -o cluster_type=sfha cluster_id=345 llt_nets="heartbeat1,heartbeat2" low_prio_net=mgmt
+# Setup Node3
+litp create -p /deployments/test/clusters/cluster2/nodes/node_3                             -t node             -o hostname=mn3
+litp inherit -p /deployments/test/clusters/cluster2/nodes/node_3/system                     -s              /infrastructure/systems/system_3
+litp inherit -p /deployments/test/clusters/cluster2/nodes/node_3/routes/default             -s              /infrastructure/networking/routes/def
+litp inherit -p /deployments/test/clusters/cluster2/nodes/node_3/storage_profile            -s              /infrastructure/storage/storage_profiles/profile_1
+litp inherit -p /deployments/test/clusters/cluster2/nodes/node_3/os                         -s              /software/profiles/rhel_6_4
+litp create -p /deployments/test/clusters/cluster2/nodes/node_3/network_interfaces/nic_0  -t eth              -o device_name=eth0 macaddress=08:00:27:5B:E1:31 network_name=mgmt ipaddress=10.10.10.103
+litp create -p /deployments/test/clusters/cluster2/nodes/node_3/network_interfaces/nic_2  -t eth              -o device_name=eth2 macaddress=08:00:27:06:E0:62 network_name=heartbeat1
+litp create -p /deployments/test/clusters/cluster2/nodes/node_3/network_interfaces/nic_3  -t eth              -o device_name=eth3 macaddress=08:00:27:21:7E:B3 network_name=heartbeat2
+
+# Setup Node4
+litp create -p /deployments/test/clusters/cluster2/nodes/node_4                             -t node             -o hostname=mn4
+litp inherit -p /deployments/test/clusters/cluster2/nodes/node_4/system                     -s              /infrastructure/systems/system_4
+litp inherit -p /deployments/test/clusters/cluster2/nodes/node_4/routes/default             -s              /infrastructure/networking/routes/def
+litp inherit -p /deployments/test/clusters/cluster2/nodes/node_4/storage_profile            -s              /infrastructure/storage/storage_profiles/profile_1
+litp inherit -p /deployments/test/clusters/cluster2/nodes/node_4/os                         -s              /software/profiles/rhel_6_4
+litp create -p /deployments/test/clusters/cluster2/nodes/node_4/network_interfaces/nic_0  -t eth              -o device_name=eth0 macaddress=08:00:27:5B:E4:31 network_name=mgmt ipaddress=10.10.10.104
+litp create -p /deployments/test/clusters/cluster2/nodes/node_4/network_interfaces/nic_2  -t eth              -o device_name=eth2 macaddress=08:00:27:06:E5:62 network_name=heartbeat1
+litp create -p /deployments/test/clusters/cluster2/nodes/node_4/network_interfaces/nic_3  -t eth              -o device_name=eth3 macaddress=08:00:27:21:9E:B3 network_name=heartbeat2
+
+litp create_plan
+litp run_plan
+
+# Temporary disable till we get working mainifests
+# assertDirectoryContents vcs_install_test/ /opt/ericsson/nms/litp/etc/puppet/manifests/plugins/
+
+# assertDirectoryContents vcs_install_test /opt/ericsson/nms/litp/

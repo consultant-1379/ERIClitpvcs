@@ -1,0 +1,34 @@
+runLitpScript cluster_common.atlib
+
+# Explicitly set the ha_manager property to vcs.
+litp update -p /deployments/test/clusters/cluster1 -o ha_manager=vcs
+
+# Create a vcs clustered service.
+litp create -t vcs-clustered-service -p /deployments/test/clusters/cluster1/services/cs1 -o active=1 standby=1 name="cs1" node_list="node_1,node_2"
+litp create -t lsb-runtime -p /deployments/test/clusters/cluster1/services/cs1/runtimes/runtime1 -o service_name='foobar' 
+
+# Add a package and inherit it on the runtime.
+litp create -t package -p /software/items/pkg1 -o name=foobar version=0.0.1-1
+litp inherit -p /deployments/test/clusters/cluster1/services/cs1/runtimes/runtime1/packages/foobar -s /software/items/pkg1
+
+litp create_plan
+litp run_plan
+
+# Update the package.
+litp update -p /software/items/pkg1 -o version=0.0.2-1
+
+# Create task variables for testing order.
+let __lock1 CallbackTask lock_node /deployments/test/clusters/cluster1/nodes/node_1
+let __lock3 CallbackTask lock_node /deployments/test/clusters/cluster1/nodes/node_1
+let __update1 ConfigTask mn1 package foobar /deployments/test/clusters/cluster1/services/cs1/runtimes/runtime1/packages/foobar ensure=0.0.2-1
+let __unlock1 CallbackTask unlock_node /deployments/test/clusters/cluster1/nodes/node_1
+let __unlock3 CallbackTask unlock_node /deployments/test/clusters/cluster1/nodes/node_1
+
+let __lock2 CallbackTask lock_node /deployments/test/clusters/cluster1/nodes/node_2
+let __update2 ConfigTask mn2 package foobar /deployments/test/clusters/cluster1/services/cs1/runtimes/runtime1/packages/foobar ensure=0.0.2-1
+let __unlock2 CallbackTask unlock_node /deployments/test/clusters/cluster1/nodes/node_2
+
+litp create_plan
+# Assert our upgrade and lock tasks are in correct order.
+#assertTaskBeforeTask __lock3 __update1 __unlock3
+#assertTaskBeforeTask __lock2 __update2 __unlock2

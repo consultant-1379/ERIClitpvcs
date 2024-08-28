@@ -1,0 +1,38 @@
+runLitpScript ../cluster_common.atlib
+
+# create cobbler service
+litp update -p /ms/services/cobbler -o boot_mode='uefi'
+
+# Add bond on bridge
+litp create -t bridge -p /deployments/test/clusters/cluster1/nodes/node_1/network_interfaces/br0 -o device_name=br0 hash_max=512 ipaddress=10.10.10.101 hash_elasticity=4 forwarding_delay=4 multicast_router=1 stp=false multicast_snooping=1 network_name=mgmt multicast_querier=0
+litp create -t bond -p /deployments/test/clusters/cluster1/nodes/node_1/network_interfaces/bond0 -o device_name=bond0 bridge=br0 mode=4 xmit_hash_policy=layer3+4 miimon=100
+
+# Update nic to use bond0
+litp update -p /deployments/test/clusters/cluster1/nodes/node_1/network_interfaces/nic_0 -d ipaddress network_name
+litp update -p /deployments/test/clusters/cluster1/nodes/node_1/network_interfaces/nic_0 -o master=bond0
+
+# Replace heartbeat nics with vlans
+litp remove -p /deployments/test/clusters/cluster1/nodes/node_1/network_interfaces/nic_2
+litp remove -p /deployments/test/clusters/cluster1/nodes/node_1/network_interfaces/nic_3
+litp create -t vlan -p  /deployments/test/clusters/cluster1/nodes/node_1/network_interfaces/vlan_hb_1 -o network_name=heartbeat1 device_name=bond0.17
+litp create -t vlan -p  /deployments/test/clusters/cluster1/nodes/node_1/network_interfaces/vlan_hb_2 -o network_name=heartbeat2 device_name=bond0.91
+
+# Add bond on bridge
+litp create -t bridge -p /deployments/test/clusters/cluster1/nodes/node_2/network_interfaces/br0 -o device_name=br0 hash_max=512 ipaddress=10.10.10.102 hash_elasticity=4 forwarding_delay=4 multicast_router=1 stp=false multicast_snooping=1 network_name=mgmt multicast_querier=0
+litp create -t bond -p /deployments/test/clusters/cluster1/nodes/node_2/network_interfaces/bond0 -o device_name=bond0 bridge=br0 mode=4 xmit_hash_policy=layer3+4 miimon=100
+
+# Update nic to use bond0
+litp update -p /deployments/test/clusters/cluster1/nodes/node_2/network_interfaces/nic_0 -d ipaddress network_name
+litp update -p /deployments/test/clusters/cluster1/nodes/node_2/network_interfaces/nic_0 -o master=bond0
+
+# Replace heartbeat nics with vlans
+litp remove -p /deployments/test/clusters/cluster1/nodes/node_2/network_interfaces/nic_2
+litp remove -p /deployments/test/clusters/cluster1/nodes/node_2/network_interfaces/nic_3
+litp create -t vlan -p  /deployments/test/clusters/cluster1/nodes/node_2/network_interfaces/vlan_hb_1 -o network_name=heartbeat1 device_name=bond0.17
+litp create -t vlan -p  /deployments/test/clusters/cluster1/nodes/node_2/network_interfaces/vlan_hb_2 -o network_name=heartbeat2 device_name=bond0.91
+
+litp create_plan
+litp run_plan
+
+assertConfigTask mn1 vcs::configure cluster1 /deployments/test/clusters/cluster1/nodes/node_1 number_of_nodes='1' heartbeats_MACs='{}' hostname='mn1' clust_type='sfha' cluster_name='cluster1' fencing_dg_name='null' cluster_ID='1' managment_MAC='{}' cluster_UUID='16f764c0-8637-3668-a788-33d313f8ea20' license_key='ENTERPRISE' hostnames='{"1": "mn1", "0": "mn2"}' rpm_list='VRTSveki VRTSperl VRTSvlic VRTSspt VRTSvxvm VRTSaslapm VRTSvxfs VRTSfssdk VRTSllt VRTSgab VRTSvxfen VRTSamf VRTSpython VRTSvcs VRTSvcsag VRTSvcsea VRTSdbed VRTSodm VRTSsfmh VRTSvbs VRTSvcswiz VRTSsfcpi VRTSglm VRTScavf VRTSgms' manage_vxfencing='false' base_os='rhel6' heartbeats_SAPs='{"bond0.91": "0xcafc", "bond0.17": "0xcafd"}' management_SAP='{"br0": "0xcafe"}' boot_mode='uefi'
+assertConfigTask mn2 vcs::configure cluster1 /deployments/test/clusters/cluster1/nodes/node_2 number_of_nodes='1' heartbeats_MACs='{}' hostname='mn2' clust_type='sfha' cluster_name='cluster1' fencing_dg_name='null' cluster_ID='1' managment_MAC='{}' cluster_UUID='16f764c0-8637-3668-a788-33d313f8ea20' license_key='ENTERPRISE' hostnames='{"1": "mn1", "0": "mn2"}' rpm_list='VRTSveki VRTSperl VRTSvlic VRTSspt VRTSvxvm VRTSaslapm VRTSvxfs VRTSfssdk VRTSllt VRTSgab VRTSvxfen VRTSamf VRTSpython VRTSvcs VRTSvcsag VRTSvcsea VRTSdbed VRTSodm VRTSsfmh VRTSvbs VRTSvcswiz VRTSsfcpi VRTSglm VRTScavf VRTSgms' manage_vxfencing='false' base_os='rhel6' heartbeats_SAPs='{"bond0.91": "0xcafc", "bond0.17": "0xcafd"}' management_SAP='{"br0": "0xcafe"}' boot_mode='uefi'

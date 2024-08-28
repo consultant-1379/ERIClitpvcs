@@ -1,0 +1,103 @@
+<?xml version='1.0' encoding='utf-8'?>
+<litp:root xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:litp="http://www.ericsson.com/litp" xsi:schemaLocation="http://www.ericsson.com/litp litp--schema/litp.xsd" id="root">
+  <litp:root-deployments-collection id="deployments">
+    <litp:deployment id="ENM">
+      <litp:deployment-clusters-collection id="clusters">
+        <litp:vcs-cluster id="db_cluster">
+          <litp:cluster-configs-collection id="configs">
+          </litp:cluster-configs-collection>
+          <litp:cluster-nodes-collection id="nodes">
+            <litp:node id="db-1">
+              <hostname>atrcxb3161</hostname>
+              <litp:node-configs-collection id="configs">
+              </litp:node-configs-collection>
+              <litp:node-file_systems-collection id="file_systems"/>
+              <litp:node-items-collection id="items">
+              </litp:node-items-collection>
+              <litp:node-network_interfaces-collection id="network_interfaces">
+                <litp:eth id="eth0">
+                  <device_name>eth0</device_name>
+                  <macaddress>D8:9D:67:70:F3:A0</macaddress>
+                  <master>bond0</master>
+                </litp:eth>
+              </litp:node-network_interfaces-collection>
+            </litp:node>
+          </litp:cluster-nodes-collection>
+          <litp:cluster-services-collection id="services">
+            <litp:vcs-clustered-service id="postgres_clustered_service">
+              <active>1</active>
+              <name>postgres</name>
+              <node_list>db-1,db-2</node_list>
+              <standby>1</standby>
+              <litp:vcs-clustered-service-filesystems-collection id="filesystems">
+              <!-- clustered service postgres filesystem inherit -->
+              <!-- DISABLED SECOND INHERIT OF FILESYSTEM
+              <litp:file-system-inherit source_path="/deployments/ENM/clusters/db_cluster/storage_profile/postgres/volume_groups/postgresdb_vg/file_systems/postgres_filesystem" id="postgres_filesystem"/>
+              -->
+              <!-- END of clustered service postgres filesystem inherit -->
+              </litp:vcs-clustered-service-filesystems-collection>  
+              <litp:vcs-clustered-service-ipaddresses-collection id="ipaddresses">
+                   <litp:vip id="postgres_vip">
+                      <ipaddress>192.168.106.51</ipaddress>
+                      <network_name>internal</network_name>
+                    </litp:vip>
+              </litp:vcs-clustered-service-ipaddresses-collection>
+            </litp:vcs-clustered-service>
+
+          </litp:cluster-services-collection>
+          <litp:cluster-software-collection id="software"/>
+          <cluster_id>10198</cluster_id>
+          <cluster_type>sfha</cluster_type>
+          <default_nic_monitor>mii</default_nic_monitor>
+          <llt_nets>heartbeat1,heartbeat2</llt_nets>
+          <low_prio_net>services</low_prio_net>
+          <litp:vcs-cluster-fencing_disks-collection id="fencing_disks"/>
+
+        <!-- cluster level inherit of postgres storage profile -->
+        <litp:vcs-cluster-storage_profile-collection id="storage_profile">
+           <litp:storage-profile-inherit source_path="/infrastructure/storage/storage_profiles/postgres_vxvm1" id="postgres" /> 
+        </litp:vcs-cluster-storage_profile-collection>
+        <!-- END of cluster level inherit of postgres storage profile -->
+
+        </litp:vcs-cluster>
+      </litp:deployment-clusters-collection>
+    </litp:deployment>
+  </litp:root-deployments-collection>
+  <litp:infrastructure id="infrastructure">
+    <litp:infrastructure-items-collection id="items"/>
+    <litp:networking id="networking"/>
+    <litp:storage id="storage">
+      <litp:storage-storage_profiles-collection id="storage_profiles">
+
+      <!-- initial postgres storage profile -->
+      <litp:storage-profile id="postgres_vxvm1">
+          <volume_driver>vxvm</volume_driver>
+          <litp:storage-profile-volume_groups-collection id="volume_groups">
+            <litp:volume-group id="postgresdb_vg">
+              <volume_group_name>postgresdb_vg</volume_group_name>
+              <litp:volume-group-file_systems-collection id="file_systems">
+                <litp:file-system id="postgres_filesystem">
+                  <mount_point>/ericsson/postgres</mount_point> 
+                  <size>8G</size>
+                  <snap_size>100</snap_size>
+                  <type>vxfs</type>
+                </litp:file-system>
+              </litp:volume-group-file_systems-collection>
+              <litp:volume-group-physical_devices-collection id="physical_devices">
+                <litp:physical-device id="internal">
+                  <device_name>sdd</device_name>
+                </litp:physical-device>
+              </litp:volume-group-physical_devices-collection>
+            </litp:volume-group>
+          </litp:storage-profile-volume_groups-collection>
+      </litp:storage-profile>
+      <!-- END of initial postgres storage profile -->
+
+      </litp:storage-storage_profiles-collection>
+    </litp:storage>
+  </litp:infrastructure>
+  <litp:ms id ="ms"/>
+  <litp:root-plans-collection id="plans"/>
+  <litp:software id="software"/>
+</litp:root>
+

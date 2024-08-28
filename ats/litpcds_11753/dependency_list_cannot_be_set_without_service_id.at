@@ -1,0 +1,12 @@
+runLitpScript ../cluster_common.atlib
+
+litp create -t service -p /software/services/mock -o service_name='mocklsb'
+
+litp create -t vcs-clustered-service -p /deployments/test/clusters/cluster1/services/cs1/ -o name="cs1" standby=1 active=1 node_list="node_1,node_2"
+litp inherit -s /software/services/mock -p /deployments/test/clusters/cluster1/services/cs1/applications/mock
+
+litp create -t ha-service-config -p /deployments/test/clusters/cluster1/services/cs1/ha_configs/conf -o dependency_list=mock
+
+
+let __err_type --err_message 'The "dependency_list" property cannot be set without the "service_id" property being set.' --err_vpath /deployments/test/clusters/cluster1/services/cs1/ha_configs/conf
+assertError __err_type create_plan

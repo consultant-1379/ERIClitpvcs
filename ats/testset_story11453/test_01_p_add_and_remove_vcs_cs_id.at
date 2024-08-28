@@ -1,0 +1,55 @@
+######################################################
+# LITPCDS-11453:
+#    test_01_p_add_and_remove_vcs_cs_id
+# Description:
+#     Update the dependency_list property of the
+#     vcs-clustered-service item by removing applied vcs-clustered-services
+#     and adding new vcs-clustered-services.
+# Steps:
+#     Create three clustered services with dependencies between them
+#     Create/ Run plan
+#     Update CS dependency list
+#     Create/ Run plan again
+#     Remove CS_11453_1
+#     Create/ Run plan again
+#     Assert no errors are returned
+# Result:
+#     CS dependencies can be updated multiple times and assigned an empty string
+######################################################
+runLitpScript ../cluster_common.atlib
+
+# Step 1: Create three clustered services with dependencies between them
+litp create -t service -p /software/services/mock1 -o service_name='mocklsb1'
+litp create -t vcs-clustered-service -p /deployments/test/clusters/cluster1/services/CS_11453_1/ -o name="cs1" standby=1 active=1 node_list="node_1,node_2"
+litp inherit -s /software/services/mock1 -p /deployments/test/clusters/cluster1/services/CS_11453_1/applications/mock1
+
+litp create -t service -p /software/services/mock2 -o service_name='mocklsb2'
+litp create -t vcs-clustered-service -p /deployments/test/clusters/cluster1/services/CS_11453_2/ -o name="cs2" standby=0 active=2 node_list="node_1,node_2" dependency_list="CS_11453_1"
+litp inherit -s /software/services/mock2 -p /deployments/test/clusters/cluster1/services/CS_11453_2/applications/mock2
+
+litp create -t service -p /software/services/mock3 -o service_name='mocklsb3'
+litp create -t vcs-clustered-service -p /deployments/test/clusters/cluster1/services/CS_11453_3/ -o name="cs3" standby=0 active=2 node_list="node_1,node_2" dependency_list="CS_11453_1,CS_11453_2"
+litp inherit -s /software/services/mock3 -p /deployments/test/clusters/cluster1/services/CS_11453_3/applications/mock3
+
+# Step 2: Create/ Run plan
+litp create_plan
+litp run_plan
+
+# Step 3: Contract the parallel VCS CS to be a one node parallel CS
+litp update -p /deployments/test/clusters/cluster1/services/CS_11453_1/ -o dependency_list="CS_11453_2,CS_11453_3"
+litp update -p /deployments/test/clusters/cluster1/services/CS_11453_2/ -o dependency_list="CS_11453_3"
+litp update -p /deployments/test/clusters/cluster1/services/CS_11453_3/ -o dependency_list=""
+
+# Step 4: Create/ Run plan again
+litp create_plan
+litp run_plan
+
+# Step 5: Remove CS_11453_1 from the model
+litp remove -p /deployments/test/clusters/cluster1/services/CS_11453_1
+litp update -p /deployments/test/clusters/cluster1/services/CS_11453_2/ -o dependency_list=""
+litp update -p /deployments/test/clusters/cluster1/services/CS_11453_3/ -o dependency_list=""
+
+# Step 6: Create/ Run plan again
+# Step 7: Ensure no errors are returned
+litp create_plan
+litp run_plan

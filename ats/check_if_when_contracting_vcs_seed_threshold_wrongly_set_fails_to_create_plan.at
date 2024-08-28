@@ -1,0 +1,52 @@
+##############
+# This AT is for development testing
+#
+# Goal: check if, during a cluster contraction, setting the
+#       vcs_seed_threshold property of vcs-cluster item
+#       to a value higher than the number of remaining nodes
+#       raises an error.
+#
+# Scenario:
+#       Inherited from testset_common/cluster_common_four_node.atlib
+#
+# Actions:
+#       Remove a new node from the cluster and set
+#       vcs_seed_threshold property
+#
+
+####
+# Bulding the scenario
+#
+assertNoPlan
+add-plugins patch_mco_agent
+runLitpScript testset_common/cluster_common_four_node.atlib
+
+####
+# Check built scenario
+#
+assertPlanState successful
+assertPropertyUnset -p /deployments/test/clusters/cluster1 -o vcs_seed_threshold
+assertState -p /deployments/test/clusters/cluster1 Applied
+
+####
+# Actions
+#
+
+#
+# Set vcs_seed_threshold to the number of nodes
+#
+litp update -p /deployments/test/clusters/cluster1 -o vcs_seed_threshold='4'
+litp create_plan
+litp run_plan
+
+assertPlanState successful
+assertProperty /deployments/test/clusters/cluster1 -o vcs_seed_threshold='4'
+assertState -p /deployments/test/clusters/cluster1 Applied
+
+#
+# Contract the cluster to have 3 nodes
+#
+let __err_create_plan_fails __err_validation --err_message "Property 'vcs_seed_threshold' must be set to a value from 1 up to the number of nodes in the cluster (3 nodes)."
+
+litp remove -p /deployments/test/clusters/cluster1/nodes/node_3
+assertError __err_create_plan_fails create_plan

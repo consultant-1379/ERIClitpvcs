@@ -1,0 +1,13 @@
+runLitpScript ../../cluster_common.atlib
+runLitpScript ../../add_2_nodes_to_cluster.atlib
+runLitpScript create_services.atlib
+
+litp create -t vcs-trigger -p /deployments/test/clusters/cluster1/services/cs1/triggers/t2 -o trigger_type="nofailover"
+litp create -t vcs-trigger -p /deployments/test/clusters/cluster1/services/cs2/triggers/t2 -o trigger_type="nofailover"
+litp create_plan
+
+assertConfigTask mn1 vcs::configure_nofailover_trigger cluster1 /deployments/test/clusters/cluster1/nodes/node_1 trigger_map='[["Grp_CS_cluster1_cs1", null]]'
+assertConfigTask mn2 vcs::configure_nofailover_trigger cluster1 /deployments/test/clusters/cluster1/nodes/node_2 trigger_map='[["Grp_CS_cluster1_cs1", null], ["Grp_CS_cluster1_cs2", null]]'
+assertConfigTask mn3 vcs::configure_nofailover_trigger cluster1 /deployments/test/clusters/cluster1/nodes/node_3 trigger_map='[["Grp_CS_cluster1_cs2", null]]'
+assertCallbackTask callback_method /deployments/test/clusters/cluster1/services/cs2/triggers/t2 callback_func=enable_or_disable_trigger_cb callback_class=VcsCluster group_name=Grp_CS_cluster1_cs2 cluster_vpath=/deployments/test/clusters/cluster1 trigger_type=nofailover delete=False
+assertCallbackTask callback_method /deployments/test/clusters/cluster1/services/cs1/triggers/t2 callback_func=enable_or_disable_trigger_cb callback_class=VcsCluster group_name=Grp_CS_cluster1_cs1 cluster_vpath=/deployments/test/clusters/cluster1 trigger_type=nofailover delete=False

@@ -1,0 +1,51 @@
+# Prerequisite - LITP deployment
+add-plugins plugins/set_deactivated
+runLitpScript ../cluster_common.atlib
+runLitpScript ../add_2_nodes_to_cluster.atlib
+
+
+# 1. Create failover service groups CS1 and CS2 with a runtime service
+litp create -t vcs-clustered-service -p /deployments/test/clusters/cluster1/services/CS1 -o name=cs1 active=1 standby=1 node_list=node_1,node_2
+litp create -t lsb-runtime -p /deployments/test/clusters/cluster1/services/CS1/runtimes/rt1 -o service_name=rt1
+litp create -t vcs-clustered-service -p /deployments/test/clusters/cluster1/services/CS2 -o name=cs2 active=1 standby=1 node_list=node_1,node_2
+litp create -t lsb-runtime -p /deployments/test/clusters/cluster1/services/CS2/runtimes/rt2 -o service_name=rt2
+
+litp create_plan
+litp run_plan
+
+# 2. Create service group CS3 with runtime service to deactivate CS1
+litp create -t vcs-clustered-service -p /deployments/test/clusters/cluster1/services/CS3 -o name=cs3 active=1 standby=1 node_list=node_3,node_4 deactivates=CS1
+litp create -t lsb-runtime -p /deployments/test/clusters/cluster1/services/CS3/runtimes/rt1 -o service_name=rt1
+
+litp create_plan
+litp run_plan
+
+# 3. Run create_plan so that the set_deactivated plugin will set the deactivated property, mimicking what would happen in the callback method
+litp create_plan
+assertProperty /deployments/test/clusters/cluster1/services/CS1 -o deactivated=true
+
+# 4. Create and run plan to remove the deactivated service
+litp create_plan
+litp run_plan
+assertNone /deployments/test/clusters/cluster1/services/CS1
+
+# 5. Create CS4 without runtime service to deactivate CS2
+litp create -t vcs-clustered-service -p /deployments/test/clusters/cluster1/services/CS4 -o name=cs4 active=1 standby=1 node_list=node_3,node_4 deactivates=CS2
+litp create -t service -p /software/services/service04 -o service_name=service04
+litp inherit -s /software/services/service04 -p /deployments/test/clusters/cluster1/services/CS4/applications/service04
+litp create -t vip -p /deployments/test/clusters/cluster1/services/CS4/ipaddresses/ip1 -o network_name=mgmt ipaddress=10.10.10.156
+litp create -t vip -p /deployments/test/clusters/cluster1/services/CS4/ipaddresses/ip2 -o network_name=mgmt ipaddress=10.10.10.157
+
+litp create_plan
+litp run_plan
+
+# 6. Run create_plan so that the set_deactivated plugin will set the deactivated property, mimicking what would happen in the callback method
+litp create_plan
+assertProperty /deployments/test/clusters/cluster1/services/CS2 -o deactivated=true
+
+# 7. Create and run plan to remove the deactivated service
+litp create_plan
+litp run_plan
+assertNone /deployments/test/clusters/cluster1/services/CS2
+
+add-plugins plugins/reset_gen_deact_task

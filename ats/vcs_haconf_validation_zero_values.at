@@ -1,0 +1,13 @@
+runLitpScript cluster_common.atlib
+
+litp create -t vcs-clustered-service -p /deployments/test/clusters/cluster1/services/cs1 -o name="httpd" active=1 standby=1 node_list="node_1,node_2" 
+litp create -t service -p /software/services/service1 -o service_name=httpd
+
+litp inherit -p /deployments/test/clusters/cluster1/services/cs1/applications/service1 -s /software/services/service1
+
+litp create -t ha-service-config -p /deployments/test/clusters/cluster1/services/cs1/ha_configs/config_httpd -o status_interval=3600 status_timeout=10 restart_limit=0 startup_retry_limit=0
+
+litp create_plan
+#clean up
+litp remove -p /deployments/test/clusters/cluster1/services/cs1
+

@@ -1,0 +1,81 @@
+##############
+# This AT is for development testing
+#
+# Goal: check if we can successfully create a plan
+#       to contract a network and change VIP ipaddresses.
+#
+# Scenario:
+#       Inherited from cluster_common_with_vips.atlib
+#       Expand traffic1 subnet from /24 to /23
+#
+# Actions:
+#       Update traffic1 subnet from /23 to /24
+#       Update on VIPs ipaddresses within the traffic1 network
+#
+
+####
+# Bulding the scenario
+#
+assertNoPlan
+runLitpScript cluster_common_with_vips.atlib
+litp update -p /infrastructure/networking/networks/traffic1 -o subnet=10.10.0.0/23
+litp create_plan
+litp run_plan
+
+####
+# Check built scenario
+#
+assertPlanState successful
+assertState -p /deployments/d1/clusters/c1 Applied
+
+####
+# Actions
+#
+litp update -p /infrastructure/networking/networks/traffic1 -o subnet=10.10.0.0/24
+
+litp update -p /deployments/d1/clusters/c1/services/PL_cups/ipaddresses/PL_cups_vip_1 -o ipaddress=10.10.0.110
+litp update -p /deployments/d1/clusters/c1/services/PL_cups/ipaddresses/PL_cups_vip_2 -o ipaddress=10.10.0.111
+litp update -p /deployments/d1/clusters/c1/services/PL_cups/ipaddresses/PL_cups_vip_3 -o ipaddress=1001::1:1:10/11
+litp update -p /deployments/d1/clusters/c1/services/PL_cups/ipaddresses/PL_cups_vip_4 -o ipaddress=1001::1:1:11/11
+
+litp update -p /deployments/d1/clusters/c1/services/FO_cups/ipaddresses/FO_cups_vip_1 -o ipaddress=10.10.0.112
+litp update -p /deployments/d1/clusters/c1/services/FO_cups/ipaddresses/FO_cups_vip_2 -o ipaddress=10.10.0.113
+litp update -p /deployments/d1/clusters/c1/services/FO_cups/ipaddresses/FO_cups_vip_3 -o ipaddress=1001::1:1:12/11
+litp update -p /deployments/d1/clusters/c1/services/FO_cups/ipaddresses/FO_cups_vip_4 -o ipaddress=1001::1:1:13/11
+
+litp update -p /deployments/d1/clusters/c1/services/FO_nscd/ipaddresses/FO_nscd_vip_1 -o ipaddress=10.10.0.120
+litp update -p /deployments/d1/clusters/c1/services/FO_nscd/ipaddresses/FO_nscd_vip_2 -o ipaddress=10.10.0.121
+litp update -p /deployments/d1/clusters/c1/services/FO_nscd/ipaddresses/FO_nscd_vip_3 -o ipaddress=1001::1:1:20/11
+litp update -p /deployments/d1/clusters/c1/services/FO_nscd/ipaddresses/FO_nscd_vip_4 -o ipaddress=1001::1:1:21/11
+
+litp update -p /deployments/d1/clusters/c1/services/PL_nscd/ipaddresses/PL_nscd_vip_1 -o ipaddress=10.10.0.122
+litp update -p /deployments/d1/clusters/c1/services/PL_nscd/ipaddresses/PL_nscd_vip_2 -o ipaddress=10.10.0.123
+litp update -p /deployments/d1/clusters/c1/services/PL_nscd/ipaddresses/PL_nscd_vip_3 -o ipaddress=1001::1:1:22/11
+litp update -p /deployments/d1/clusters/c1/services/PL_nscd/ipaddresses/PL_nscd_vip_4 -o ipaddress=1001::1:1:23/11
+
+litp update -p /deployments/d1/clusters/c1/services/FO_samba/ipaddresses/FO_samba_vip_1 -o ipaddress=10.10.0.130
+litp update -p /deployments/d1/clusters/c1/services/FO_samba/ipaddresses/FO_samba_vip_2 -o ipaddress=10.10.0.131
+litp update -p /deployments/d1/clusters/c1/services/FO_samba/ipaddresses/FO_samba_vip_3 -o ipaddress=1001::1:1:30/11
+litp update -p /deployments/d1/clusters/c1/services/FO_samba/ipaddresses/FO_samba_vip_4 -o ipaddress=1001::1:1:31/11
+
+litp update -p /deployments/d1/clusters/c1/services/PL_samba/ipaddresses/PL_samba_vip_1 -o ipaddress=10.10.0.132
+litp update -p /deployments/d1/clusters/c1/services/PL_samba/ipaddresses/PL_samba_vip_2 -o ipaddress=10.10.0.133
+litp update -p /deployments/d1/clusters/c1/services/PL_samba/ipaddresses/PL_samba_vip_3 -o ipaddress=1001::1:1:32/11
+litp update -p /deployments/d1/clusters/c1/services/PL_samba/ipaddresses/PL_samba_vip_4 -o ipaddress=1001::1:1:33/11
+
+#####
+# Create Plan
+#
+litp create_plan
+
+#####
+# Run plan
+#
+litp run_plan
+
+#####
+# Post-run Checks
+#
+assertPlanState successful
+assertState -p /deployments/d1/clusters/c1 Applied
+assertCallbackTask callback_method /deployments/d1/clusters/c1/services/FO_cups/ipaddresses/FO_cups_vip_4 callback_func=update_vip_callback cluster_vpath=/deployments/d1/clusters/c1 network_vpath=/infrastructure/networking/networks/traffic1

@@ -1,0 +1,46 @@
+######################################################
+#	TORF-128825:
+#		test_09_p_deactivate_CS_with_dependencies_updated
+#	Description:
+#		Test to verify that a user can deactivate a CS that has a dependency on it
+#		provided its updated
+#	Steps:
+#		Create 3 CSs with various dependencies between them
+#		Create/ Run Plan
+#		Create additional which will deactivate CS that is dependent upon
+#		Update dependency list of other CSs
+#		Create/ Run Plan
+#		Ensure no validation errors are received
+#	Result:
+#		CS will be deactivated and no errors received
+######################################################
+
+runLitpScript ../cluster_common.atlib
+runLitpScript ../add_2_nodes_to_cluster.atlib
+
+# Create 3 CSs with various dependencies between them
+litp create -t vcs-clustered-service -p /deployments/test/clusters/cluster1/services/CS1 -o name=cs1 active=1 standby=1 node_list=node_1,node_2 dependency_list=CS3
+litp create -t service -p /software/services/service01 -o service_name=service01
+litp inherit -s /software/services/service01 -p /deployments/test/clusters/cluster1/services/CS1/applications/service01
+
+litp create -t vcs-clustered-service -p /deployments/test/clusters/cluster1/services/CS2 -o name=cs2 active=1 standby=1 node_list=node_1,node_2 dependency_list=CS3,CS1
+litp create -t service -p /software/services/service02 -o service_name=service02
+litp inherit -s /software/services/service02 -p /deployments/test/clusters/cluster1/services/CS2/applications/service02
+
+litp create -t vcs-clustered-service -p /deployments/test/clusters/cluster1/services/CS3 -o name=cs3 active=1 standby=1 node_list=node_1,node_2
+litp create -t service -p /software/services/service03 -o service_name=service03
+litp inherit -s /software/services/service03 -p /deployments/test/clusters/cluster1/services/CS3/applications/service03
+
+# litp create and run plan
+litp create_plan
+litp run_plan
+
+# Create additional CS that will deactivate a CS that is dependent upon
+litp create -t vcs-clustered-service -p /deployments/test/clusters/cluster1/services/CS4 -o name=cs4 active=1 standby=1 node_list=node_4,node_3 deactivates=CS1
+litp create -t service -p /software/services/service04 -o service_name=service04
+litp inherit -s /software/services/service04 -p /deployments/test/clusters/cluster1/services/CS4/applications/service04
+
+litp update -p /deployments/test/clusters/cluster1/services/CS2 -o dependency_list=CS3,CS4
+
+litp create_plan
+litp run_plan

@@ -1,0 +1,7 @@
+runLitpScript ../cluster_common.atlib
+runLitpScript ./vcs_property_reconfig_tasks_create.atlib
+
+# Verify callback task created for service cleanup_command update
+litp update -p /software/services/s1 -o  cleanup_command='/bin/cleanup_s1.sh'
+litp create_plan
+assertCallbackTask callback_method /deployments/test/clusters/cluster1/services/cs1/applications/s1 callback_func=cb_update_app_after_lock callback_class=ApplicationResource

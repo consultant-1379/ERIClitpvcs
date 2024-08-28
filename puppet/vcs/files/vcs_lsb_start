@@ -1,0 +1,15 @@
+#!/bin/bash
+
+RHELV=$(facter operatingsystemmajrelease)
+# Parameter 1 is name of service to control
+if [ $RHELV -gt 6 ]; then
+    /usr/bin/systemctl start $1  # For RHEL7
+else
+    /etc/init.d/$1 start         # For RHEL6
+fi
+
+if (( $? == 0 )); then
+  exit $2  # Parameter 2 is number of seconds to wait before monitoring
+else
+  exit 0  # "start" call failed, so call monitor script immediately to report that to VCS
+fi

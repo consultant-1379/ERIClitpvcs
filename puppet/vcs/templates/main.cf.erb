@@ -1,0 +1,19 @@
+include "types.cf"
+
+cluster <%= @cluster_name %> (
+<% if $manage_vxfencing == 'true' -%>
+	UseFence = SCSI3
+<% end -%>
+	)
+
+<% if @hostnames.is_a?(Array) -%>
+<% [@hostnames].flatten.each do |hostname| -%>
+system <%= hostname %> (
+	)
+<% end -%>
+<% else -%>
+<% @hostnames.keys.sort.each do |id| -%>
+system <%= @hostnames[id] %> (
+	)
+<% end -%>
+<% end -%>

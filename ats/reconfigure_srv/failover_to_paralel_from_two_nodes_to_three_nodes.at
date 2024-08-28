@@ -1,0 +1,27 @@
+runLitpScript ../cluster_common.atlib
+
+#Add third node just for this test. Required when want to update the service from standby to parallel and modify the node_list.
+litp create -p /deployments/test/clusters/cluster1/nodes/node_3 -t node -o hostname=mn3
+litp inherit -p /deployments/test/clusters/cluster1/nodes/node_3/system -s /infrastructure/systems/system_1
+litp inherit -p /deployments/test/clusters/cluster1/nodes/node_3/routes/default -s /infrastructure/networking/routes/def
+litp inherit -p /deployments/test/clusters/cluster1/nodes/node_3/storage_profile -s /infrastructure/storage/storage_profiles/profile_1
+litp inherit -p /deployments/test/clusters/cluster1/nodes/node_3/os -s /software/profiles/rhel_6_4
+litp create -p /deployments/test/clusters/cluster1/nodes/node_3/network_interfaces/nic_0 -t eth -o device_name=eth0 macaddress=08:00:27:DB:C1:3F network_name=mgmt ipaddress=10.10.10.103
+litp create -p /deployments/test/clusters/cluster1/nodes/node_3/network_interfaces/nic_2 -t eth -o device_name=eth2 macaddress=08:00:27:E6:C0:61 network_name=heartbeat1
+litp create -p /deployments/test/clusters/cluster1/nodes/node_3/network_interfaces/nic_3 -t eth -o device_name=eth3 macaddress=08:00:27:B1:7D:BC network_name=heartbeat2
+
+litp create -t service -p /software/services/mock -o service_name='mocklsb'
+
+litp create -t vcs-clustered-service -p /deployments/test/clusters/cluster1/services/cs1/ -o name="cs1" standby=1 active=1 node_list="node_1,node_2"
+litp inherit -s /software/services/mock -p /deployments/test/clusters/cluster1/services/cs1/applications/mock
+litp create -t vip -p /deployments/test/clusters/cluster1/services/cs1/ipaddresses/ip1 -o network_name='mgmt' ipaddress='10.10.10.155'
+
+litp create_plan
+litp run_plan
+litp create -t vip -p /deployments/test/clusters/cluster1/services/cs1/ipaddresses/ip2 -o network_name='mgmt' ipaddress='10.10.10.157'
+litp create -t vip -p /deployments/test/clusters/cluster1/services/cs1/ipaddresses/ip3 -o network_name='mgmt' ipaddress='10.10.10.158'
+
+
+litp update -p /deployments/test/clusters/cluster1/services/cs1/ -o standby=0 active=3 node_list="node_1,node_2,node_3"
+assertError --err_message 'Reconfigure from failover to parallel expects the same node list' create_plan
+

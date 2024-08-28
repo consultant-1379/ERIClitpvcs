@@ -1,0 +1,33 @@
+runLitpScript cluster_common.atlib
+
+litp create -t service -p /software/services/mock -o service_name=mocklsb
+litp create -t vcs-clustered-service -p /deployments/test/clusters/cluster1/services/cs1 -o name="cs1" active=2 standby=0 node_list="node_1,node_2"
+litp inherit -s /software/services/mock -p /deployments/test/clusters/cluster1/services/cs1/applications/mock
+
+litp create -p /deployments/test/clusters/cluster1/services/cs1/ipaddresses/ip1 -t vip -o network_name='mgmt' ipaddress='10.10.10.155'
+litp create -p /deployments/test/clusters/cluster1/services/cs1/ipaddresses/ip2 -t vip -o network_name='mgmt' ipaddress='10.10.10.156'
+litp create -p /deployments/test/clusters/cluster1/services/cs1/ipaddresses/ip3 -t vip -o network_name='mgmt' ipaddress='10.10.10.157'
+litp create -p /deployments/test/clusters/cluster1/services/cs1/ipaddresses/ip4 -t vip -o network_name='mgmt' ipaddress='10.10.10.158'
+litp create -p /deployments/test/clusters/cluster1/services/cs1/ipaddresses/ip5 -t vip -o network_name='mgmt' ipaddress='10.10.10.159'
+litp create -p /deployments/test/clusters/cluster1/services/cs1/ipaddresses/ip6 -t vip -o network_name='mgmt' ipaddress='10.10.10.160'
+litp create -p /deployments/test/clusters/cluster1/services/cs1/ipaddresses/ip7 -t vip -o network_name='mgmt' ipaddress='10.10.10.161'
+litp create -p /deployments/test/clusters/cluster1/services/cs1/ipaddresses/ip8 -t vip -o network_name='mgmt' ipaddress='10.10.10.162'
+litp create -p /deployments/test/clusters/cluster1/services/cs1/ipaddresses/ip9 -t vip -o network_name='mgmt' ipaddress='10.10.10.163'
+litp create -p /deployments/test/clusters/cluster1/services/cs1/ipaddresses/ip10 -t vip -o network_name='mgmt' ipaddress='10.10.10.164'
+litp create -p /deployments/test/clusters/cluster1/services/cs1/ipaddresses/ip11 -t vip -o network_name='mgmt' ipaddress='10.10.10.165'
+litp create -p /deployments/test/clusters/cluster1/services/cs1/ipaddresses/ip12 -t vip -o network_name='mgmt' ipaddress='10.10.10.166'
+litp create -p /deployments/test/clusters/cluster1/services/cs1/ipaddresses/ip13 -t vip -o network_name='mgmt' ipaddress='10.10.10.167'
+litp create -p /deployments/test/clusters/cluster1/services/cs1/ipaddresses/ip14 -t vip -o network_name='mgmt' ipaddress='10.10.10.168'
+litp create -p /deployments/test/clusters/cluster1/services/cs1/ipaddresses/ip15 -t vip -o network_name='mgmt' ipaddress='10.10.10.169'
+litp create -p /deployments/test/clusters/cluster1/services/cs1/ipaddresses/ip16 -t vip -o network_name='mgmt' ipaddress='10.10.10.170'
+litp create -p /deployments/test/clusters/cluster1/services/cs1/ipaddresses/ip17 -t vip -o network_name='mgmt' ipaddress='10.10.10.171'
+litp create -p /deployments/test/clusters/cluster1/services/cs1/ipaddresses/ip18 -t vip -o network_name='mgmt' ipaddress='10.10.10.172'
+litp create -p /deployments/test/clusters/cluster1/services/cs1/ipaddresses/ip19 -t vip -o network_name='mgmt' ipaddress='10.10.10.173'
+litp create -p /deployments/test/clusters/cluster1/services/cs1/ipaddresses/ip20 -t vip -o network_name='mgmt' ipaddress='10.10.10.174'
+litp create -p /deployments/test/clusters/cluster1/services/cs1/ipaddresses/ip21 -t vip -o network_name='mgmt' ipaddress='10.10.10.175'
+litp create -p /deployments/test/clusters/cluster1/services/cs1/ipaddresses/ip22 -t vip -o network_name='mgmt' ipaddress='10.10.10.176'
+litp create -p /deployments/test/clusters/cluster1/services/cs1/ipaddresses/ip23 -t vip -o network_name='mgmt' ipaddress='10.10.10.177'
+litp create -p /deployments/test/clusters/cluster1/services/cs1/ipaddresses/ip24 -t vip -o network_name='mgmt' ipaddress='10.10.10.178'
+
+litp create_plan
+litp run_plan

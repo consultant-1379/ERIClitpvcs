@@ -1,0 +1,3 @@
+runLitpScript ../../cluster_common.atlib
+
+assertError --err_message 'The following vcs-clustered-services have been specified more than once: cs1.' create -t vcs-clustered-service -p /deployments/test/clusters/cluster1/services/cs2 -o name="service2" active=1 standby=1 node_list="node_1,node_2" dependency_list=cs1 initial_online_dependency_list=cs1,cs1

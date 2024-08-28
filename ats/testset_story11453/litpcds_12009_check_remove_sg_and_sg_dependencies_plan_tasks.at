@@ -1,0 +1,30 @@
+runLitpScript ../cluster_common.atlib
+
+# Create cs1
+litp create -t service -p /software/services/mock -o service_name='mocklsb'
+litp create -t vcs-clustered-service -p /deployments/test/clusters/cluster1/services/cs1/ -o name="cs1" standby=0 active=2 node_list="node_1,node_2" dependency_list=cs2
+litp inherit -s /software/services/mock -p /deployments/test/clusters/cluster1/services/cs1/applications/mock
+
+# Create cs2
+litp create -t service -p /software/services/mock2 -o service_name='mocklsb2'
+litp create -t vcs-clustered-service -p /deployments/test/clusters/cluster1/services/cs2/ -o name="cs2" standby=0 active=2 node_list="node_1,node_2"
+litp inherit -s /software/services/mock2 -p /deployments/test/clusters/cluster1/services/cs2/applications/mock2
+
+litp create_plan
+litp run_plan
+
+# Update CS2 to not depend on CS1
+litp remove -p /deployments/test/clusters/cluster1/services/cs2/
+
+# Then remove CS1
+litp update -p /deployments/test/clusters/cluster1/services/cs1/ -o dependency_list=""
+
+litp create_plan
+
+# Ensure that the task for service group dependencies removal is before the SG removal
+let __task_update_deps_rm CallbackTask callback_method /deployments/test/clusters/cluster1/services/cs1 callback_func=update_remove_dependencies_callback callback_class=VcsServiceGroupHelper service_vpath=/deployments/test/clusters/cluster1/services/cs1 cluster_item_id=cluster1 service_group_name='Grp_CS_cluster1_cs1'
+let __task_delete_sg CallbackTask callback_method /deployments/test/clusters/cluster1/services/cs2 callback_func=delete_callback callback_class=VcsServiceGroupHelper service_vpath=/deployments/test/clusters/cluster1/services/cs2 cluster_vpath=/deployments/test/clusters/cluster1
+
+assertTaskBeforeTask __task_update_deps_rm __task_delete_sg
+
+litp run_plan

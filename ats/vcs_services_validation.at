@@ -1,0 +1,56 @@
+runLitpScript cluster_common.atlib
+
+litp create -t vcs-clustered-service -p /deployments/test/clusters/cluster1/services/cs1 -o name="httpd" active=2 standby=0 node_list="node_1,node_2"
+
+#Negative 1: Create two services within one vcs-cluster service group
+litp create -t service -p /software/services/service1 -o service_name=httpd
+litp inherit -p /deployments/test/clusters/cluster1/services/cs1/applications/service1 -s /software/services/service1
+litp create -t service -p /software/services/service2 -o service_name=httpd1
+litp inherit -p /deployments/test/clusters/cluster1/services/cs1/applications/service2 -s /software/services/service2
+
+assertError --err_message "Multiple services are only supported in a failover or a one node parallel vcs-clustered-service." --err_vpath /deployments/test/clusters/cluster1/services/cs1 create_plan
+
+#clean up
+litp remove -p /deployments/test/clusters/cluster1/services/cs1/applications/service1
+litp remove -p /deployments/test/clusters/cluster1/services/cs1/applications/service2
+litp remove -p /software/services/service1
+litp remove -p /software/services/service2
+
+
+#Negative 2: Mixture of runtime and service within the one vcs cluster service
+litp create -t service -p /software/services/service1 -o service_name=httpd
+litp inherit -p /deployments/test/clusters/cluster1/services/cs1/applications/service1 -s /software/services/service1
+litp create -t lsb-runtime   -p /deployments/test/clusters/cluster1/services/cs1/runtimes/apache -o service_name=http
+assertError --err_message "service and lsb-runtime items may not both be used in the same vcs-clustered-service" --err_vpath /deployments/test/clusters/cluster1/services/cs1 create_plan
+
+#clean up
+litp remove -p /deployments/test/clusters/cluster1/services/cs1/applications/service1
+litp remove -p /software/services/service1
+litp remove -p /deployments/test/clusters/cluster1/services/cs1/runtimes/apache
+
+
+#Negative 3:  No service available for the cluster service
+
+assertError --err_message "No service or lsb-runtime items found" --err_vpath /deployments/test/clusters/cluster1/services/cs1 --errors_length 1 create_plan
+
+#Positive 1: Create one service groups
+litp create -t service -p /software/services/service1 -o service_name=httpd
+litp inherit -p /deployments/test/clusters/cluster1/services/cs1/applications/service1 -s /software/services/service1
+litp create_plan
+
+#clean up
+litp remove -p /deployments/test/clusters/cluster1/services/cs1/applications/service1
+litp remove -p /software/services/service1
+
+#Positive 2: Create two services, but remove one so its in removal state
+litp create -t service -p /software/services/service1 -o service_name=httpd
+litp inherit -p /deployments/test/clusters/cluster1/services/cs1/applications/service1 -s /software/services/service1
+litp create -t service -p /software/services/service2 -o service_name=httpd1
+litp inherit -p /deployments/test/clusters/cluster1/services/cs1/applications/service2 -s /software/services/service2
+litp remove -p /deployments/test/clusters/cluster1/services/cs1/applications/service1
+litp create_plan
+
+#clean up
+litp remove -p /deployments/test/clusters/cluster1/services/cs1/applications/service2
+litp remove -p /software/services/service2
+litp remove -p /software/services/service1

@@ -1,0 +1,27 @@
+runLitpScript ../../cluster_common.atlib
+
+litp create -t service -p /software/services/mock -o service_name='mocklsb'
+
+# Create service group on node_1 and node_2
+litp create -t vcs-clustered-service -p /deployments/test/clusters/cluster1/services/cs1/ -o name="cs1" standby=0 active=2 node_list="node_1,node_2"
+litp inherit -s /software/services/mock -p /deployments/test/clusters/cluster1/services/cs1/applications/mock
+
+# Create new network
+litp create -t network -p /infrastructure/networking/networks/traffic4 -o name=traffic4
+litp create -t eth -p /deployments/test/clusters/cluster1/nodes/node_1/network_interfaces/nic_4 -o device_name=eth4 macaddress=08:00:27:04:01:82 network_name='traffic4' ipv6address=2001:abcd:ef::2
+litp create -t eth -p /deployments/test/clusters/cluster1/nodes/node_2/network_interfaces/nic_4 -o device_name=eth4 macaddress=08:00:27:04:02:82 network_name='traffic4' ipv6address=2001:abcd:ef::3
+
+litp create_plan
+litp run_plan
+
+# Create 2 VIPS
+litp create -p /deployments/test/clusters/cluster1/services/cs1/ipaddresses/ip1 -t vip -o network_name='traffic4' ipaddress=2001:abcd:ef::3/64
+litp create -p /deployments/test/clusters/cluster1/services/cs1/ipaddresses/ip2 -t vip -o network_name='traffic4' ipaddress=2001:abcd:ef::5/64
+
+let __err_1 --err_type ValidationError --err_message 'The IP address "2001:abcd:ef::3/64" is already used by interface "/deployments/test/clusters/cluster1/nodes/node_2/network_interfaces/nic_4" on the network "traffic4" on the node "mn2".' --err_vpath /deployments/test/clusters/cluster1/services/cs1/ipaddresses/ip1
+assertError __err_1 --errors_length 1 create_plan
+
+litp remove -p /deployments/test/clusters/cluster1/services/cs1/
+
+litp create_plan
+

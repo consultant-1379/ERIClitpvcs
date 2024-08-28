@@ -1,0 +1,29 @@
+######################################################
+# TORF-360177:
+#     remove_depending_cluster
+# Description:
+#     Test to verify a user cannot remove a vcs clusters upon which
+#     other clusters have a dependency.
+# Steps:
+#     Create three seperate clusters - cluster1, cluster2, cluster3
+#     Allow cluster3 to have a dependency on cluster2
+#     Remove cluster2
+#     Ensure a ValidationError is thrown while creating a plan
+# Result:
+#     A cluster upon which other clusters have a dependency
+#     can not be removed by itself
+######################################################
+
+# Prerequisite - LITP deployment
+
+runLitpScript ../cluster_common.atlib
+runLitpScript ../add_second_and_third_clusters_with_dependencies.atlib
+
+# Remove depending cluster
+litp remove -p /deployments/test/clusters/cluster2
+litp remove -p /infrastructure/systems/system_3
+litp remove -p /infrastructure/systems/system_4
+litp remove -p /infrastructure/storage/storage_profiles/profile_2
+
+# Ensure depending cluster cannot be removed
+assertError --err_type ValidationError --err_message "Create plan failed: Cluster \"/deployments/test/clusters/cluster2\" does not exist. Ensure dependency_list property is correct" create_plan

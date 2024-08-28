@@ -1,0 +1,12 @@
+runLitpScript cluster_common.atlib
+
+litp create -t vcs-clustered-service -p /deployments/test/clusters/cluster1/services/cs1 -o name="httpd" active=2 standby=0 node_list="node_1,node_2"
+litp create -t lsb-runtime           -p /deployments/test/clusters/cluster1/services/cs1/runtimes/apache -o service_name=httpd
+
+
+
+litp create -p /deployments/test/clusters/cluster1/services/cs1/runtimes/apache/ipaddresses/ip1 -t vip -o network_name='mgmt' ipaddress='10.10.10.155'
+litp create -p /deployments/test/clusters/cluster1/services/cs1/runtimes/apache/ipaddresses/ip2 -t vip -o network_name='mgmt' ipaddress='10.10.10.156'
+litp create -p /deployments/test/clusters/cluster1/services/cs1/runtimes/apache/ipaddresses/ip3 -t vip -o network_name='mgmt' ipaddress='10.10.10.157'
+
+assertError --err_message "Create plan failed: IPs for network mgmt not a multiple of active count 2" create_plan

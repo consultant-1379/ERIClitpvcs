@@ -1,0 +1,15 @@
+runLitpScript cluster_common.atlib
+
+# vcs clustered service httpd
+litp create -p /deployments/test/clusters/cluster1/services/cs-1 -t vcs-clustered-service -o active=1 standby=0 name='cs_1' online_timeout=180 dependency_list="" node_list='node_1'
+litp create -t service -p /software/services/service1 -o service_name=httpd
+litp inherit -p /deployments/test/clusters/cluster1/services/cs-1/applications/service1 -s /software/services/service1
+
+# vcs clustered service ntpd
+litp create -p /deployments/test/clusters/cluster1/services/cs_1 -t vcs-clustered-service -o active=1 standby=0 name='cs_2' online_timeout=180 dependency_list="" node_list='node_1'
+litp create -t service -p /software/services/service2 -o service_name=ntpd
+litp inherit -p /deployments/test/clusters/cluster1/services/cs_1/applications/service1 -s /software/services/service2
+
+let __err_cs-1 --err_message 'Create plan failed: The model item_id "cs-1" is incompatible with the model item_id in "/deployments/test/clusters/cluster1/services/cs_1" because "-" and "_" are interchangeable.' --err_type ValidationError  --err_vpath '/deployments/test/clusters/cluster1/services/cs-1'
+let __err_cs_1 --err_message 'Create plan failed: The model item_id "cs_1" is incompatible with the model item_id in "/deployments/test/clusters/cluster1/services/cs-1" because "-" and "_" are interchangeable.' --err_type ValidationError  --err_vpath '/deployments/test/clusters/cluster1/services/cs_1'
+assertError __err_cs-1 __err_cs_1 create_plan

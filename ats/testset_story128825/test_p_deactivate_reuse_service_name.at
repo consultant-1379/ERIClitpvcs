@@ -1,0 +1,52 @@
+# Prerequisite - LITP deployment
+add-plugins plugins/set_deactivated
+runLitpScript ../cluster_common.atlib
+runLitpScript ../add_2_nodes_to_cluster.atlib
+
+# 1. Create failover service group CS0 and CS1 which depends on CS0
+litp create -t vcs-clustered-service -p /deployments/test/clusters/cluster1/services/CS0 -o name=cs0 active=1 standby=1 node_list=node_1,node_2
+litp create -t service -p /software/services/service00 -o service_name=service00
+litp inherit -s /software/services/service00 -p /deployments/test/clusters/cluster1/services/CS0/applications/service00
+litp create -t vip -p /deployments/test/clusters/cluster1/services/CS0/ipaddresses/ip1 -o network_name=mgmt ipaddress=10.10.10.158
+litp create -t vip -p /deployments/test/clusters/cluster1/services/CS0/ipaddresses/ip2 -o network_name=mgmt ipaddress=10.10.10.159
+
+litp create -t vcs-clustered-service -p /deployments/test/clusters/cluster1/services/CS1 -o name=cs1 active=1 standby=1 node_list=node_1,node_2 dependency_list=CS0
+litp create -t service -p /software/services/service01 -o service_name=service01
+litp inherit -s /software/services/service01 -p /deployments/test/clusters/cluster1/services/CS1/applications/service01
+litp create -t vip -p /deployments/test/clusters/cluster1/services/CS1/ipaddresses/ip1 -o network_name=mgmt ipaddress=10.10.10.156
+litp create -t vip -p /deployments/test/clusters/cluster1/services/CS1/ipaddresses/ip2 -o network_name=mgmt ipaddress=10.10.10.157
+
+litp create_plan
+litp run_plan
+
+# 2. Create service group CS2 that deactivates CS1
+litp create -t vcs-clustered-service -p /deployments/test/clusters/cluster1/services/CS2 -o name=cs2 active=1 standby=1 node_list=node_3,node_4 deactivates=CS1
+litp inherit -s /software/services/service01 -p /deployments/test/clusters/cluster1/services/CS2/applications/service01
+litp create -t vip -p /deployments/test/clusters/cluster1/services/CS2/ipaddresses/ip1 -o network_name=mgmt ipaddress=10.10.10.156
+litp create -t vip -p /deployments/test/clusters/cluster1/services/CS2/ipaddresses/ip2 -o network_name=mgmt ipaddress=10.10.10.157
+litp create_plan
+litp run_plan
+
+# 3. Run create_plan so that the set_deactivated plugin will set the deactivated property, mimicking what would happen in the callback method
+litp create_plan
+assertProperty /deployments/test/clusters/cluster1/services/CS1 -o deactivated=true
+
+# 4. Create and run plan to remove the deactivated service
+litp run_plan
+assertNone /deployments/test/clusters/cluster1/services/CS1
+
+# 5. Create a new service reusing CS1 Id and name
+litp create -t vcs-clustered-service -p /deployments/test/clusters/cluster1/services/CS1 -o name=cs1 active=1 standby=1 node_list=node_1,node_2 dependency_list=CS0
+litp inherit -s /software/services/service01 -p /deployments/test/clusters/cluster1/services/CS1/applications/service01
+litp create -t vip -p /deployments/test/clusters/cluster1/services/CS1/ipaddresses/ip1 -o network_name=mgmt ipaddress=10.10.10.160
+litp create -t vip -p /deployments/test/clusters/cluster1/services/CS1/ipaddresses/ip2 -o network_name=mgmt ipaddress=10.10.10.161
+
+# 6. Expect validation errors because model now has applied service (CS2) set to deactivate an initial service (CS1)
+let __err1 --err_type ValidationError --err_vpath /deployments/test/clusters/cluster1/services/CS2 --err_message 'deactivates property cannot reference a vcs-clustered-service that is not in Applied state.'
+assertError --errors_length 1 __err1 create_plan
+
+# 7. Remove deactivates property from CS2
+litp update -p /deployments/test/clusters/cluster1/services/CS2 -d deactivates
+litp create_plan
+
+add-plugins plugins/reset_gen_deact_task

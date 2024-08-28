@@ -1,0 +1,32 @@
+# This test emulates the scenario in bug TORF-109551 for postonline trigger.
+# A service group is created with a trigger but fails to go online
+# It is then removed. The plan is expected to succeed
+# The online_cb_mock is used to patch the Online helper task so that failCallbackTask
+# can target a specific callback method.
+add-plugins ../litpcds_13411/development/online_cb_mock
+runLitpScript ../cluster_common.atlib
+runLitpScript ../add_2_nodes_to_cluster.atlib
+runLitpScript create_services.atlib
+
+litp create -t vip -p /deployments/test/clusters/cluster1/services/cs1/ipaddresses/ip6_1 -o  ipaddress='2001:abcd:ef::10/64'  network_name='mgmt'
+litp create -t vip -p /deployments/test/clusters/cluster1/services/cs2/ipaddresses/ip6_1 -o  ipaddress='2001:abcd:ef::11/64'  network_name='mgmt'
+litp create -t vcs-trigger -p /deployments/test/clusters/cluster1/services/cs1/triggers/t2 -o trigger_type="postonline"
+litp create -t vcs-trigger -p /deployments/test/clusters/cluster1/services/cs2/triggers/t2 -o trigger_type="postonline"
+litp create_plan
+
+assertConfigTask mn1 vcs::configure_postonline_trigger cluster1 /deployments/test/clusters/cluster1/nodes/node_1 trigger_map='[["Grp_CS_cluster1_cs1", null, "eth0", "2001:abcd:ef::10"]]'
+assertConfigTask mn2 vcs::configure_postonline_trigger cluster1 /deployments/test/clusters/cluster1/nodes/node_2 trigger_map='[["Grp_CS_cluster1_cs1", null, "eth0", "2001:abcd:ef::10"], ["Grp_CS_cluster1_cs2", null, "eth0", "2001:abcd:ef::11"]]'
+assertConfigTask mn3 vcs::configure_postonline_trigger cluster1 /deployments/test/clusters/cluster1/nodes/node_3 trigger_map='[["Grp_CS_cluster1_cs2", null, "eth0", "2001:abcd:ef::11"]]'
+assertCallbackTask callback_method /deployments/test/clusters/cluster1/services/cs2/triggers/t2 callback_func=enable_or_disable_trigger_cb callback_class=VcsCluster group_name=Grp_CS_cluster1_cs2 cluster_vpath=/deployments/test/clusters/cluster1 trigger_type=postonline delete=False
+assertCallbackTask callback_method /deployments/test/clusters/cluster1/services/cs1/triggers/t2 callback_func=enable_or_disable_trigger_cb callback_class=VcsCluster group_name=Grp_CS_cluster1_cs1 cluster_vpath=/deployments/test/clusters/cluster1 trigger_type=postonline delete=False
+
+failCallbackTask mock_online_callback /deployments/test/clusters/cluster1/services/cs2
+
+litp run_plan
+litp remove -p /deployments/test/clusters/cluster1/services/cs2
+
+litp create_plan
+assertConfigTask mn2 vcs::configure_postonline_trigger cluster1 /deployments/test/clusters/cluster1/nodes/node_2 trigger_map='[["Grp_CS_cluster1_cs1", null, "eth0", "2001:abcd:ef::10"]]'
+assertConfigTask mn3 vcs::remove_postonline_trigger cluster1 /deployments/test/clusters/cluster1/nodes/node_3
+litp run_plan
+add-plugins ../litpcds_13411/development/online_cb_mock_restore

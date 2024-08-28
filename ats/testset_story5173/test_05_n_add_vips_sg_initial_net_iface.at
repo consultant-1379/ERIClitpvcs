@@ -1,0 +1,55 @@
+# test_05_n_add_vips_sg_initial_net_iface
+#
+# Description :
+# Update a Service group along which references an initial network interface
+#
+# Steps:
+# 1. Add a new network interface to a new network
+# 2. Add 2 vips to a PL SG which reference the new network
+# 3. Ensure validation
+
+runLitpScript ../cluster_common.atlib
+
+litp create -t service -p /software/services/mock -o service_name='mocklsb'
+
+# Create service group on node_1 and node_2
+litp create -t vcs-clustered-service -p /deployments/test/clusters/cluster1/services/cs1/ -o name="cs1" standby=0 active=2 node_list="node_1,node_2"
+litp inherit -s /software/services/mock -p /deployments/test/clusters/cluster1/services/cs1/applications/mock
+
+# Create new network
+litp create -p /infrastructure/networking/networks/traffic4 -t network -o name=traffic4 subnet=10.10.11.0/24
+
+litp create_plan
+litp run_plan
+
+# 1. Add a new network interface to a new network
+litp create -t eth -p /deployments/test/clusters/cluster1/nodes/node_1/network_interfaces/nic_4 -o device_name=eth4 macaddress=08:00:27:04:01:82 network_name='traffic4'
+litp create -t eth -p /deployments/test/clusters/cluster1/nodes/node_2/network_interfaces/nic_4 -o device_name=eth4 macaddress=08:00:27:04:01:82 network_name='traffic4'
+
+# 2. Add 2 vips to a PL SG which reference the new network
+litp create -p /deployments/test/clusters/cluster1/services/cs1/ipaddresses/ip1 -t vip -o network_name='traffic4' ipaddress='10.10.11.101'
+litp create -p /deployments/test/clusters/cluster1/services/cs1/ipaddresses/ip2 -t vip -o network_name='traffic4' ipaddress='10.10.11.102'
+
+let __err_1 --err_type ValidationError --err_message 'Create plan failed: A "vip" cannot be added to device "eth4" on node "mn1" as the network-interface is in initial state' --err_vpath /deployments/test/clusters/cluster1/services/cs1/ipaddresses/ip1
+let __err_2 --err_type ValidationError --err_message 'Create plan failed: A "vip" cannot be added to device "eth4" on node "mn1" as the network-interface is in initial state' --err_vpath /deployments/test/clusters/cluster1/services/cs1/ipaddresses/ip2
+let __err_3 --err_type ValidationError --err_message 'Create plan failed: A "vip" cannot be added to device "eth4" on node "mn2" as the network-interface is in initial state' --err_vpath /deployments/test/clusters/cluster1/services/cs1/ipaddresses/ip1
+let __err_4 --err_type ValidationError --err_message 'Create plan failed: A "vip" cannot be added to device "eth4" on node "mn2" as the network-interface is in initial state' --err_vpath /deployments/test/clusters/cluster1/services/cs1/ipaddresses/ip2
+
+# 3. Ensure validation
+assertError __err_1 __err_2 __err_3 __err_4 --errors_length 4 create_plan
+
+# Remove the 2 VIPS
+litp remove -p /deployments/test/clusters/cluster1/services/cs1/ipaddresses/ip1
+litp remove -p /deployments/test/clusters/cluster1/services/cs1/ipaddresses/ip2
+
+litp create_plan
+litp run_plan
+
+# Create 2 VIPS in the applied network
+litp create -p /deployments/test/clusters/cluster1/services/cs1/ipaddresses/ip1 -t vip -o network_name='traffic4' ipaddress='10.10.11.101'
+litp create -p /deployments/test/clusters/cluster1/services/cs1/ipaddresses/ip2 -t vip -o network_name='traffic4' ipaddress='10.10.11.102'
+
+litp create_plan
+
+# Check the VIP creation is now OK
+assertCallbackTask callback_method /deployments/test/clusters/cluster1/services/cs1/ipaddresses/ip1 callback_func=vip_callback callback_class=NetworkResourceHelper network_name=traffic4

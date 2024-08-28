@@ -1,0 +1,28 @@
+runLitpScript ../../cluster_common.atlib
+
+
+
+litp create -t vcs-clustered-service -p /deployments/test/clusters/cluster1/services/cs1 -o name="httpd" active=2 standby=0 node_list="node_1,node_2"
+litp create -t lsb-runtime           -p /deployments/test/clusters/cluster1/services/cs1/runtimes/apache -o service_name=httpd
+
+litp create -t vcs-clustered-service -p /deployments/test/clusters/cluster1/services/cs2 -o name="nfs" active=1 standby=1 node_list="node_1,node_2" dependency_list='cs1'
+litp create -t lsb-runtime           -p /deployments/test/clusters/cluster1/services/cs2/runtimes/nfs -o service_name=nfs
+
+litp create -t vcs-clustered-service -p /deployments/test/clusters/cluster1/services/cs3 -o name="ricci" active=1 standby=1 node_list="node_1,node_2" initial_online_dependency_list='cs1,cs2' dependency_list='cs1'
+litp create -t lsb-runtime           -p /deployments/test/clusters/cluster1/services/cs3/runtimes/ricci -o service_name=ricci
+
+# Validation test to ensure the same service group cannot be included in both dependency_list and initial_online_dependency_list.
+
+assertError --err_message 'Create plan failed: The dependency "cs1" is in both "dependency_list" and "initial_online_dependency_list". The same vcs-clustered-service cannot be referenced in both the "initial_online_dependency_list" and the "dependency_list" property.' create_plan
+
+litp remove -p /deployments/test/clusters/cluster1/services/cs3
+
+# Validation test to ensure multiple errors for the same service group included in both dependency_list and initial_online_dependency_list.
+
+litp create -t vcs-clustered-service -p /deployments/test/clusters/cluster1/services/cs3 -o name="ricci" active=1 standby=1 node_list="node_1,node_2" initial_online_dependency_list='cs1,cs2' dependency_list='cs2,cs1'
+litp create -t lsb-runtime           -p /deployments/test/clusters/cluster1/services/cs3/runtimes/ricci -o service_name=ricci
+
+let __err_cs1 --err_type ValidationError --err_message 'The dependency "cs1" is in both "dependency_list" and "initial_online_dependency_list". The same vcs-clustered-service cannot be referenced in both the "initial_online_dependency_list" and the "dependency_list" property.'
+let __err_cs2 --err_type ValidationError --err_message 'The dependency "cs2" is in both "dependency_list" and "initial_online_dependency_list". The same vcs-clustered-service cannot be referenced in both the "initial_online_dependency_list" and the "dependency_list" property.'
+assertError  __err_cs1 __err_cs2  create_plan
+

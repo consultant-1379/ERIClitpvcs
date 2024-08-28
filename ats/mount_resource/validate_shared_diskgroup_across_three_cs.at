@@ -1,0 +1,41 @@
+runLitpScript ../cluster_common.atlib
+
+# Create first VxVM diskgroup
+litp create -t storage-profile -p /infrastructure/storage/storage_profiles/vx_sp -o volume_driver='vxvm'
+litp create -t volume-group    -p /infrastructure/storage/storage_profiles/vx_sp/volume_groups/vxvg1 -o volume_group_name='vx_dg'
+litp create -t file-system    -p /infrastructure/storage/storage_profiles/vx_sp/volume_groups/vxvg1/file_systems/versant_fs1 -o mount_point='/opt/ericsson/nms/versant1' type="vxfs" size=100G snap_size=0
+litp create -t physical-device -p /infrastructure/storage/storage_profiles/vx_sp/volume_groups/vxvg1/physical_devices/lun0 -o device_name='lun0'
+
+# create a second VxVM diskgroup
+litp create -t volume-group    -p /infrastructure/storage/storage_profiles/vx_sp/volume_groups/vxvg2 -o volume_group_name='vx_dg2'
+litp create -t file-system    -p /infrastructure/storage/storage_profiles/vx_sp/volume_groups/vxvg2/file_systems/versant_fs2 -o mount_point='/opt/ericsson/nms/versant2' type="vxfs" size=100G snap_size=0
+litp create -t physical-device -p /infrastructure/storage/storage_profiles/vx_sp/volume_groups/vxvg2/physical_devices/lun1 -o device_name='lun1'
+
+# Add VxVM storage profile to cluster
+litp inherit -s /infrastructure/storage/storage_profiles/vx_sp -p /deployments/test/clusters/cluster1/storage_profile/vxvm_storage
+
+# create first CS
+litp create -t vcs-clustered-service -p /deployments/test/clusters/cluster1/services/cs1 -o name="versant_listener1" active=1 standby=1 node_list="node_1,node_2"
+litp create -t service -p /software/services/versant -o service_name=versantd
+litp inherit -p /deployments/test/clusters/cluster1/services/cs1/applications/versant -s /software/services/versant
+litp inherit -p /deployments/test/clusters/cluster1/services/cs1/filesystems/versant_mount -s /deployments/test/clusters/cluster1/storage_profile/vxvm_storage/volume_groups/vxvg1/file_systems/versant_fs1
+
+# Create a second CS with fs from second diskgroup
+litp create -t vcs-clustered-service -p /deployments/test/clusters/cluster1/services/cs2 -o name="versant_listener2" active=1 standby=1 node_list="node_1,node_2"
+litp create -t service -p /software/services/versant2 -o service_name=versantd2
+litp inherit -p /deployments/test/clusters/cluster1/services/cs2/applications/versant -s /software/services/versant2
+litp inherit -p /deployments/test/clusters/cluster1/services/cs2/filesystems/versant_mount -s /deployments/test/clusters/cluster1/storage_profile/vxvm_storage/volume_groups/vxvg2/file_systems/versant_fs2
+
+litp create_plan
+litp run_plan
+
+# Add a third CS with a filesystem that uses the same diskgroup as cs1
+
+litp create -t file-system -p /infrastructure/storage/storage_profiles/vx_sp/volume_groups/vxvg1/file_systems/versant_fs_new -o mount_point='/opt/ericsson/nms/versant_new' type="vxfs" size=100G snap_size=0
+
+litp create -t vcs-clustered-service -p /deployments/test/clusters/cluster1/services/cs_new -o name="versant_listener_new" active=1 standby=1 node_list="node_1,node_2"
+litp create -t service -p /software/services/versant_new -o service_name=versantd_new
+litp inherit -p /deployments/test/clusters/cluster1/services/cs_new/applications/versant -s /software/services/versant_new
+litp inherit -p /deployments/test/clusters/cluster1/services/cs_new/filesystems/versant_mount -s /deployments/test/clusters/cluster1/storage_profile/vxvm_storage/volume_groups/vxvg1/file_systems/versant_fs_new
+
+assertError --errors_length 1 --err_message "Filesystem from volume-group /infrastructure/storage/storage_profiles/vx_sp/volume_groups/vxvg1 is inherited on more than one service." create_plan

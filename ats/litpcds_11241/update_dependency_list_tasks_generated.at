@@ -1,0 +1,33 @@
+runLitpScript ../cluster_common.atlib
+
+# Create cs1
+litp create -t service -p /software/services/mock -o service_name='mocklsb'
+litp create -t vcs-clustered-service -p /deployments/test/clusters/cluster1/services/cs1 -o name="cs1" standby=1 active=1 node_list="node_1,node_2" dependency_list=""
+litp inherit -s /software/services/mock -p /deployments/test/clusters/cluster1/services/cs1/applications/mock
+
+# Create cs2
+litp create -t service -p /software/services/mock2 -o service_name='mocklsb2'
+litp create -t vcs-clustered-service -p /deployments/test/clusters/cluster1/services/cs2 -o name="cs2" standby=0 active=1 node_list="node_1" dependency_list=""
+litp inherit -s /software/services/mock2 -p /deployments/test/clusters/cluster1/services/cs2/applications/mock2
+
+# Create cs3
+litp create -t service -p /software/services/mock3 -o service_name='mocklsb3'
+litp create -t vcs-clustered-service -p /deployments/test/clusters/cluster1/services/cs3 -o name="cs3" standby=0 active=2 node_list="node_1,node_2" dependency_list=""
+litp inherit -s /software/services/mock3 -p /deployments/test/clusters/cluster1/services/cs3/applications/mock3
+
+
+litp create_plan
+litp run_plan
+
+
+litp update -p /deployments/test/clusters/cluster1/services/cs2 -o dependency_list=cs1
+litp update -p /deployments/test/clusters/cluster1/services/cs3 -o dependency_list=cs2
+litp update -p /deployments/test/clusters/cluster1/services/cs3 -o dependency_list=""
+
+
+litp create_plan
+
+assertCallbackTask callback_method /deployments/test/clusters/cluster1/services/cs2 callback_func=update_dependencies_callback callback_class=VcsServiceGroupHelper service_vpath=/deployments/test/clusters/cluster1/services/cs2 cluster_item_id=cluster1 service_group_name='Grp_CS_cluster1_cs2'
+
+# Make sure that the is no task on cs3 as this has been updated back to no dependency
+assertNoCallbackTask callback_method /deployments/test/clusters/cluster1/services/cs3 callback_func=update_dependencies_callback callback_class=VcsServiceGroupHelper service_vpath=/deployments/test/clusters/cluster1/services/cs3 cluster_item_id=cluster1 service_group_name='Grp_CS_cluster1_cs3'

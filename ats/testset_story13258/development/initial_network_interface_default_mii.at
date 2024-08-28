@@ -1,0 +1,7 @@
+runLitpScript ../../cluster_common.atlib
+
+litp create_plan
+
+assertCallbackTask callback_method /deployments/test/clusters/cluster1 callback_func=add_nicgrp_callback callback_class=VcsNICServiceGroupHelper nic_name=eth0 cluster_item_id=cluster1 mii='0' 
+
+litp run_plan

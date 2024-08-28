@@ -1,0 +1,50 @@
+# test_03_p_cs_initial_sg_plan_tasks.at
+
+# Description:
+#
+# When cs_initial_online property is set to on, then the litp plan will contain tasks to online the service group.
+# Should the property be set to off, then the litp plan will not contain any tasks to online the service group.
+#
+# Test Steps:
+#
+# 1. Execute a litp update command on the vcs-cluster model item, setting the cs_initial_online property to off.
+# 2. Execute a litp create command to create a new clustered service item
+# 3. Execute a litp create_plan command
+# 4. Assert the show_plan result does contain tasks to configure the service group
+# 5. Assert the show_plan result does not contain any tasks to online the service group
+# 6. Execute a litp update command on the vcs-cluster model item, setting the cs_initial_online property to on
+# 7. Execute a litp create_plan command
+# 8. Assert the show_plan result does contain tasks to online the service group
+#
+# Expected Result:
+#
+# The litp plan will configure the clustered service but will not bring it online unless cs_initial_online value is set to on.
+
+# Prerequisite - LITP Deployment
+runLitpScript ../cluster_common.atlib
+
+# 1. Execute a litp update command on the vcs-cluster model item, setting the cs_initial_online property to off
+litp update -p /deployments/test/clusters/cluster1 -o cs_initial_online=off
+
+# 2. Execute a litp create command to create a new clustered service item
+litp create -t service -p /software/services/mock -o service_name=mocklsb
+litp create -t vcs-clustered-service -p /deployments/test/clusters/cluster1/services/cs1 -o name="cs1" active=2 standby=0 node_list="node_1,node_2"
+litp inherit -s /software/services/mock -p /deployments/test/clusters/cluster1/services/cs1/applications/mock
+
+# 3. Execute a litp create_plan command
+litp create_plan
+
+# 4. Assert the show_plan result does contain tasks to configure the service group
+assertTask 3 callback_method ms1 /deployments/test/clusters/cluster1/services/cs1 Initial 'Create VCS service group "Grp_CS_cluster1_cs1"'
+
+# 5. Assert the show_plan result does not contain any tasks to online the service group
+assertNoCallbackTask callback_method ms1 /deployments/test/clusters/cluster1/services/cs1 Initial 'Bring VCS service group "Grp_CS_cluster1_cs1" online'
+
+# 6. Execute a litp update command on the vcs-cluster model item, setting the cs_initial_online property to on
+litp update -p /deployments/test/clusters/cluster1 -o cs_initial_online=on
+
+# 7. Execute a litp create_plan command
+litp create_plan
+
+# 8. Assert the show_plan result does contain tasks to online the service group
+assertTask 5 callback_method ms1 /deployments/test/clusters/cluster1/services/cs1 Initial 'Bring VCS service group "Grp_CS_cluster1_cs1" online'

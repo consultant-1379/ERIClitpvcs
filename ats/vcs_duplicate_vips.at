@@ -1,0 +1,25 @@
+# Added for LITPCDS-10413 
+# To validate that error message is returned for each vip that uses duplicate ip address
+runLitpScript cluster_common.atlib
+
+litp create -t vcs-clustered-service -p /deployments/test/clusters/cluster1/services/CS1 -o name=cs1 active=1 standby=1 node_list=node_1,node_2
+litp create -t service -p /software/services/service00 -o service_name=service00
+litp inherit -s /software/services/service00 -p /deployments/test/clusters/cluster1/services/CS1/applications/service00
+
+# Create 3 vips using ipadress 10.10.10.11 and 2 vips using 10.10.10.17
+litp create -t vip -p /deployments/test/clusters/cluster1/services/CS1/ipaddresses/ip1 -o ipaddress=10.10.10.11 network_name=mgmt
+litp create -t vip -p /deployments/test/clusters/cluster1/services/CS1/ipaddresses/ip2 -o ipaddress=10.10.10.12 network_name=mgmt
+litp create -t vip -p /deployments/test/clusters/cluster1/services/CS1/ipaddresses/ip3 -o ipaddress=10.10.10.11 network_name=mgmt
+litp create -t vip -p /deployments/test/clusters/cluster1/services/CS1/ipaddresses/ip4 -o ipaddress=10.10.10.11 network_name=mgmt
+litp create -t vip -p /deployments/test/clusters/cluster1/services/CS1/ipaddresses/ip5 -o ipaddress=10.10.10.15 network_name=mgmt
+litp create -t vip -p /deployments/test/clusters/cluster1/services/CS1/ipaddresses/ip6 -o ipaddress=10.10.10.16 network_name=mgmt
+litp create -t vip -p /deployments/test/clusters/cluster1/services/CS1/ipaddresses/ip7 -o ipaddress=10.10.10.17 network_name=mgmt
+litp create -t vip -p /deployments/test/clusters/cluster1/services/CS1/ipaddresses/ip8 -o ipaddress=10.10.10.17 network_name=mgmt
+
+# Validate that there is an error message for each of the duplicate vips
+let __err_dupl_1 --err_message 'Create plan failed: IP address "10.10.10.11" can only be used once in deployment.' --err_vpath /deployments/test/clusters/cluster1/services/CS1/ipaddresses/ip1
+let __err_dupl_3 --err_message 'Create plan failed: IP address "10.10.10.11" can only be used once in deployment.' --err_vpath /deployments/test/clusters/cluster1/services/CS1/ipaddresses/ip3
+let __err_dupl_4 --err_message 'Create plan failed: IP address "10.10.10.11" can only be used once in deployment.' --err_vpath /deployments/test/clusters/cluster1/services/CS1/ipaddresses/ip4
+let __err_dupl_7 --err_message 'Create plan failed: IP address "10.10.10.17" can only be used once in deployment.' --err_vpath /deployments/test/clusters/cluster1/services/CS1/ipaddresses/ip7
+let __err_dupl_8 --err_message 'Create plan failed: IP address "10.10.10.17" can only be used once in deployment.' --err_vpath /deployments/test/clusters/cluster1/services/CS1/ipaddresses/ip8
+assertError __err_dupl_1 __err_dupl_3 __err_dupl_4 __err_dupl_7 __err_dupl_8 create_plan

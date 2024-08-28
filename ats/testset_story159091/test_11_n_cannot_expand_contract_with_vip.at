@@ -1,0 +1,29 @@
+# Test to verify that a user cannot expand/contract CSs with VIPs configured whilst
+# the node_list is a subset/intersects with the previously configured node_list
+
+runLitpScript ../testset_common/three_nodes_common.atlib
+
+litp create -t service -p /software/services/mock1 -o service_name='mocklsb1'
+litp create -t vcs-clustered-service -p /deployments/test/clusters/cluster1/services/cs1/ -o name="cs1" standby=0 active=2 node_list="node_1,node_2"
+litp inherit -s /software/services/mock1 -p /deployments/test/clusters/cluster1/services/cs1/applications/mock
+litp create -t vip -p /deployments/test/clusters/cluster1/services/cs1/ipaddresses/ip1 -o network_name='mgmt' ipaddress='10.10.10.155'
+litp create -t vip -p /deployments/test/clusters/cluster1/services/cs1/ipaddresses/ip2 -o network_name='mgmt' ipaddress='10.10.10.156'
+
+litp create -t service -p /software/services/mock2 -o service_name='mocklsb2'
+litp create -t vcs-clustered-service -p /deployments/test/clusters/cluster1/services/cs2/ -o name="cs2" standby=0 active=2 node_list="node_1,node_2"
+litp inherit -s /software/services/mock2 -p /deployments/test/clusters/cluster1/services/cs2/applications/mock
+litp create -t vip -p /deployments/test/clusters/cluster1/services/cs2/ipaddresses/ip1 -o network_name='mgmt' ipaddress='10.10.10.157'
+litp create -t vip -p /deployments/test/clusters/cluster1/services/cs2/ipaddresses/ip2 -o network_name='mgmt' ipaddress='10.10.10.158'
+
+litp create_plan
+litp run_plan
+
+# Cannot update a CS with VIPs that have the node_list intersect from the original node_list parameter
+
+litp update -p /deployments/test/clusters/cluster1/services/cs1/ -o active=1 node_list="node_2"
+litp update -p /deployments/test/clusters/cluster1/services/cs2/ -o node_list="node_2,node_3"
+
+let __err1_plan --err_message 'Create plan failed: Removal of nodes from node_list of service containing VIPs is not supported.' --err_type ValidationError  --err_vpath '/deployments/test/clusters/cluster1/services/cs1'
+let __err2_plan --err_message 'Create plan failed: Removal of nodes from node_list of service containing VIPs is not supported.' --err_type ValidationError  --err_vpath '/deployments/test/clusters/cluster1/services/cs2'
+let __err3_plan --err_message 'Create plan failed: The number of "IPv4" VIP items per node for network "mgmt" in vcs-clustered-service "cs1" must be the same after change of active property from "2" to "1".' --err_type ValidationError  --err_vpath '/deployments/test/clusters/cluster1/services/cs1'
+assertError __err1_plan __err2_plan __err3_plan create_plan

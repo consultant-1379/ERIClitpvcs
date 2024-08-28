@@ -1,0 +1,13 @@
+runLitpScript ../../cluster_common.atlib
+
+# Validation test to ensure the serviec group itself can't be included in its own initial_online_dependency_list
+
+litp create -t vcs-clustered-service -p /deployments/test/clusters/cluster1/services/cs1 -o name="httpd" active=1 standby=1 node_list="node_1,node_2"
+litp create -t lsb-runtime           -p /deployments/test/clusters/cluster1/services/cs1/runtimes/apache -o service_name=httpd
+
+litp create -t vcs-clustered-service -p /deployments/test/clusters/cluster1/services/cs3 -o name="ricci" active=1 standby=1 node_list="node_1,node_2" initial_online_dependency_list='cs1,cs3'
+litp create -t lsb-runtime           -p /deployments/test/clusters/cluster1/services/cs3/runtimes/ricci -o service_name=ricci
+
+assertError --errors_length=1 --err_type ValidationError --err_vpath /deployments/test/clusters/cluster1/services/cs3 --err_message 'Service can not have an initial online dependency on itself. Please ensure "initial_online_dependency_list" property is correct' create_plan
+
+

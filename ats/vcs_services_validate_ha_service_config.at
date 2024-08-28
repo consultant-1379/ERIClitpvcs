@@ -1,0 +1,11 @@
+runLitpScript cluster_common.atlib
+
+litp create -t vcs-clustered-service -p /deployments/test/clusters/cluster1/services/cs1 -o name="httpd" active=2 standby=0 node_list="node_1,node_2"
+
+#Negative 1: Create one service within two ha-service-config items
+litp create -t service -p /software/services/service1 -o service_name=httpd
+litp inherit -p /deployments/test/clusters/cluster1/services/cs1/applications/service1 -s /software/services/service1
+litp create -t ha-service-config -p /deployments/test/clusters/cluster1/services/cs1/ha_configs/conf1 -o status_interval=10 status_timeout=10 restart_limit=5 startup_retry_limit=2
+litp create -t ha-service-config -p /deployments/test/clusters/cluster1/services/cs1/ha_configs/conf2 -o status_interval=10 status_timeout=10 restart_limit=5 startup_retry_limit=2
+
+assertError --err_message 'Number of ha-service-config items defined for vcs-clustered-service "httpd" exceeds maximum number of 1' --err_vpath /deployments/test/clusters/cluster1/services/cs1 --errors_length 1 create_plan

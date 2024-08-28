@@ -1,0 +1,17 @@
+# Quick note - the parallel functionality is tested by existing ats
+runLitpScript ../cluster_common.atlib
+
+# Create a failover service group
+litp create -t vcs-clustered-service -p /deployments/test/clusters/cluster1/services/CS1 -o name=cs1 -o node_list=node_1,node_2 active=1 standby=1
+
+# Create the services
+litp create -t service -p /software/services/service00 -o service_name=service00
+litp create -t service -p /software/services/service01 -o service_name=service01
+
+litp inherit -s /software/services/service00 -p /deployments/test/clusters/cluster1/services/CS1/applications/service00
+litp create -t ha-service-config -p /deployments/test/clusters/cluster1/services/CS1/ha_configs/s00 -o service_id=service00
+
+litp inherit -s /software/services/service01 -p /deployments/test/clusters/cluster1/services/CS1/applications/service01
+litp create -t ha-service-config -p /deployments/test/clusters/cluster1/services/CS1/ha_configs/s01 -o service_id=service01 dependency_list=service00,service00
+
+assertError --err_message 'ha-service-config dependency_list repeats service item_id: "service00"' --err_vpath /deployments/test/clusters/cluster1/services/CS1/ha_configs/s01 create_plan

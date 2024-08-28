@@ -1,0 +1,36 @@
+######################################################
+#	TORF-128825:
+#		test_10_n_deactivate_critical_service_without_updating_property
+#	Description:
+#		Deactivate CS that is listed as a critical service, and should 
+#		get a validation error
+#	Steps:
+#		Create FO CS that is listed as critical
+#		Create/ Run Plan
+#		Create additional CS that tries deactivate the critical CS
+#		Create Plan
+#		Ensure validation error is received
+#	Result:
+#		Should not be able to deactivate a CS that is listed as critical 
+#		service unless updating the property to point to new CS
+######################################################
+
+runLitpScript ../cluster_common.atlib
+runLitpScript ../add_2_nodes_to_cluster.atlib
+
+litp create -t vcs-clustered-service -p /deployments/test/clusters/cluster1/services/CS1 -o name=cs1 active=1 standby=1 node_list=node_1,node_2
+litp create -t service -p /software/services/service01 -o service_name=service01
+litp inherit -s /software/services/service01 -p /deployments/test/clusters/cluster1/services/CS1/applications/service01
+
+litp update -p /deployments/test/clusters/cluster1/ -o critical_service="CS1"
+
+litp create_plan
+litp run_plan
+
+litp create -t vcs-clustered-service -p /deployments/test/clusters/cluster1/services/CS2 -o name=cs2 active=1 standby=1 node_list=node_4,node_3 deactivates=CS1
+litp create -t service -p /software/services/service02 -o service_name=service02
+litp inherit -s /software/services/service02 -p /deployments/test/clusters/cluster1/services/CS2/applications/service02
+
+let __err1 --err_type ValidationError --err_vpath /deployments/test/clusters/cluster1 --err_message 'critical_service property cannot reference a vcs-clustered-service marked for deactivation'
+
+assertError __err1 create_plan

@@ -1,0 +1,61 @@
+# test_04_p_add_vips_sg_with_lock_unlock.at
+#
+# Description :
+# Update a Service group along with a lock/unlock task. Ensure that the vips are created before the lock/unlock
+#
+# Steps:
+# 1. Add 1 ipv4 vip and 1 ipv6 vip to a FO service group
+# 2. Add 2 ipv4 vips and 2 ipv6 vips to a PL service group
+# 3. Make a configuration change on the node that requires a lock and unlock on each node
+# 4. Create plan
+# 5. Ensure that the addition of the vip is before the lock/unlock
+# 6. Run plan
+
+runLitpScript ../cluster_common.atlib
+
+# Create FO service
+litp create -t service -p /software/services/mockFO -o service_name='mockFO'
+litp create -t vcs-clustered-service -p /deployments/test/clusters/cluster1/services/cs1/ -o name="cs1" standby=1 active=1 node_list="node_1,node_2"
+litp inherit -s /software/services/mockFO -p /deployments/test/clusters/cluster1/services/cs1/applications/mock
+
+# Create PL service
+litp create -t service -p /software/services/mockPL -o service_name='mockPL'
+litp create -t vcs-clustered-service -p /deployments/test/clusters/cluster1/services/cs2/ -o name="cs2" standby=0 active=2 node_list="node_1,node_2"
+litp inherit -s /software/services/mockPL -p /deployments/test/clusters/cluster1/services/cs2/applications/mock
+
+litp create_plan
+litp run_plan
+
+# 1. Add 1 ipv4 vip and 1 ipv6 vip to a FO service group
+litp create -t vip -p /deployments/test/clusters/cluster1/services/cs1/ipaddresses/ip1 -o network_name='mgmt' ipaddress='10.10.10.155'
+litp create -t vip -p /deployments/test/clusters/cluster1/services/cs1/ipaddresses/ip2 -o network_name='mgmt' ipaddress='2001:abcd:ef::1/64'
+
+# 2. Add 2 ipv4 vips and 2 ipv6 vips to a PL service group
+litp create -t vip -p /deployments/test/clusters/cluster1/services/cs2/ipaddresses/ip1 -o network_name='mgmt' ipaddress='10.10.10.156'
+litp create -t vip -p /deployments/test/clusters/cluster1/services/cs2/ipaddresses/ip2 -o network_name='mgmt' ipaddress='10.10.10.157'
+litp create -t vip -p /deployments/test/clusters/cluster1/services/cs2/ipaddresses/ip3 -o network_name='mgmt' ipaddress='2001:abcd:ef::2/64'
+litp create -t vip -p /deployments/test/clusters/cluster1/services/cs2/ipaddresses/ip4 -o network_name='mgmt' ipaddress='2001:abcd:ef::3/64'
+
+# 3. Make a configuration change on the node that requires a lock and unlock on each node
+litp create -t package -p /software/items/pkg1 -o name=pkg1
+litp inherit -s /software/items/pkg1 -p /deployments/test/clusters/cluster1/nodes/node_1/items/pkg1
+litp inherit -s /software/items/pkg1 -p /deployments/test/clusters/cluster1/nodes/node_2/items/pkg1
+
+# 4. Create plan
+litp create_plan
+
+let __create_vips_FO CallbackTask callback_method /deployments/test/clusters/cluster1/services/cs1/ipaddresses/ip1 callback_func=vip_callback callback_class=NetworkResourceHelper network_name=mgmt
+let __create_vips_PL CallbackTask callback_method /deployments/test/clusters/cluster1/services/cs2/ipaddresses/ip1 callback_func=vip_callback callback_class=NetworkResourceHelper network_name=mgmt
+let __lock1 CallbackTask lock_node /deployments/test/clusters/cluster1/nodes/node_1
+let __lock2 CallbackTask lock_node /deployments/test/clusters/cluster1/nodes/node_2
+let __unlock1 CallbackTask unlock_node /deployments/test/clusters/cluster1/nodes/node_1
+let __unlock2 CallbackTask unlock_node /deployments/test/clusters/cluster1/nodes/node_2
+
+# 5. Ensure that the addition of the vip is before the lock/unlock
+assertTaskBeforeTask __create_vips_FO __lock1 __unlock1
+assertTaskBeforeTask __create_vips_PL __lock1 __unlock1
+assertTaskBeforeTask __create_vips_FO __lock2 __unlock2
+assertTaskBeforeTask __create_vips_PL __lock2 __unlock2
+
+# 6. Run plan
+litp run_plan

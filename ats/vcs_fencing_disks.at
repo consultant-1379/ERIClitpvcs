@@ -1,0 +1,64 @@
+# Basic lib for setting up a VCS cluster
+# Create an OS Profile
+litp create -p /software/profiles/rhel_6_4          -t os-profile       -o name=sample-profile version=rhel6 path=/profiles/node-iso/ arch=x86_64 breed=redhat kopts_post='console=ttyS0,115200'
+
+# Create 2 node systems
+litp create -p /infrastructure/systems/system_1                           -t system           -o system_name=MN1VM
+litp create -p /infrastructure/systems/system_2                           -t system           -o system_name=MN2VM
+
+# Nodes Disks
+litp create -t disk -p /infrastructure/systems/system_1/disks/disk0 -o name=hd0 size=56G bootable=true uuid=c2996df73ab69d1577ea390fb2c8
+litp create -t disk -p /infrastructure/systems/system_2/disks/disk0 -o name=hd0 size=56G bootable=true uuid=c29d5a97a382bbc3564dd0301934
+
+# Create a Network Profile for the node
+litp create -p /infrastructure/networking/networks/mgmt  -t network          -o name=mgmt litp_management=true subnet=10.10.10.0/24
+litp create -t route -p /infrastructure/networking/routes/def -o subnet=0.0.0.0/0 gateway=10.10.10.1
+
+# Storage profile
+litp create -p /infrastructure/storage/storage_profiles/profile_1                                               -t storage-profile
+litp create -p /infrastructure/storage/storage_profiles/profile_1/volume_groups/vg1                             -t volume-group         -o volume_group_name=vg_root
+litp create -p /infrastructure/storage/storage_profiles/profile_1/volume_groups/vg1/file_systems/root           -t file-system          -o type=ext4 mount_point=/ size=16G
+litp create -p /infrastructure/storage/storage_profiles/profile_1/volume_groups/vg1/physical_devices/internal   -t physical-device      -o device_name=hd0
+
+# IP for MS
+litp create -p /ms/network_interfaces/if0 -t eth -o network_name=mgmt ipaddress=10.10.10.100 macaddress=aa:aa:aa:aa:aa:aa device_name=eth0
+
+# create cobbler service
+litp create -t cobbler-service -p /ms/services/cobbler
+
+# Setup Cluster
+litp create -p /deployments/test                                                            -t deployment
+litp create -p /deployments/test/clusters/cluster1                                          -t vcs-cluster      -o cluster_type=sfha llt_nets="heartbeat1,heartbeat2" low_prio_net="mgmt" cluster_id="1"
+litp create -p /deployments/test/clusters/cluster1/fencing_disks/fd1                        -t disk             -o uuid=123 size=100M name=fencing_disk_1
+litp create -p /deployments/test/clusters/cluster1/fencing_disks/fd2                        -t disk             -o uuid=234 size=100M name=fencing_disk_2
+litp create -p /deployments/test/clusters/cluster1/fencing_disks/fd3                        -t disk             -o uuid=345 size=100M name=fencing_disk_3
+
+# inherit networks
+
+# Setup Node1
+litp create -p /deployments/test/clusters/cluster1/nodes/node_1                             -t node             -o hostname=mn1 
+litp inherit -p /deployments/test/clusters/cluster1/nodes/node_1/system                     -s              /infrastructure/systems/system_1
+litp inherit -p /deployments/test/clusters/cluster1/nodes/node_1/routes/default             -s              /infrastructure/networking/routes/def
+litp inherit -p /deployments/test/clusters/cluster1/nodes/node_1/storage_profile            -s              /infrastructure/storage/storage_profiles/profile_1
+litp inherit -p /deployments/test/clusters/cluster1/nodes/node_1/os                         -s              /software/profiles/rhel_6_4
+litp create -p /deployments/test/clusters/cluster1/nodes/node_1/network_interfaces/nic_0  -t eth              -o device_name=eth0 macaddress=08:00:27:5B:C1:3F network_name=mgmt ipaddress=10.10.10.101 
+litp create -p /deployments/test/clusters/cluster1/nodes/node_1/network_interfaces/nic_2  -t eth              -o device_name=eth2 macaddress=08:00:27:06:C0:61 network_name=heartbeat1
+litp create -p /deployments/test/clusters/cluster1/nodes/node_1/network_interfaces/nic_3  -t eth              -o device_name=eth3 macaddress=08:00:27:21:7D:BC network_name=heartbeat2
+
+
+# Setup Node2
+litp create -p /deployments/test/clusters/cluster1/nodes/node_2                             -t node             -o hostname=mn2
+litp inherit -p /deployments/test/clusters/cluster1/nodes/node_2/system                     -s              /infrastructure/systems/system_2
+litp inherit -p /deployments/test/clusters/cluster1/nodes/node_2/routes/default             -s              /infrastructure/networking/routes/def
+litp inherit -p /deployments/test/clusters/cluster1/nodes/node_2/storage_profile            -s              /infrastructure/storage/storage_profiles/profile_1
+litp inherit -p /deployments/test/clusters/cluster1/nodes/node_2/os                         -s              /software/profiles/rhel_6_4
+litp create -p /deployments/test/clusters/cluster1/nodes/node_2/network_interfaces/nic_0  -t eth              -o device_name=eth0 macaddress=08:00:27:5B:C1:31 network_name=mgmt ipaddress=10.10.10.102
+litp create -p /deployments/test/clusters/cluster1/nodes/node_2/network_interfaces/nic_2  -t eth              -o device_name=eth2 macaddress=08:00:27:06:C0:62 network_name=heartbeat1
+litp create -p /deployments/test/clusters/cluster1/nodes/node_2/network_interfaces/nic_3  -t eth              -o device_name=eth3 macaddress=08:00:27:21:7D:B3 network_name=heartbeat2
+
+litp create_plan
+litp run_plan
+
+assertConfigTask mn1 vcs::configure cluster1 /deployments/test/clusters/cluster1/nodes/node_1 number_of_nodes='1' heartbeats_MACs='{"eth3": "08:00:27:21:7D:BC", "eth2": "08:00:27:06:C0:61"}' hostname='mn1' clust_type='sfha' cluster_name='cluster1' fencing_dg_name='vxfencoorddg_1' cluster_ID='1' managment_MAC='{"eth0": "08:00:27:5B:C1:3F"}' cluster_UUID='16f764c0-8637-3668-a788-33d313f8ea20' license_key='ENTERPRISE' hostnames='{"1": "mn1", "0": "mn2"}' rpm_list='VRTSveki VRTSperl VRTSvlic VRTSspt VRTSvxvm VRTSaslapm VRTSvxfs VRTSfssdk VRTSllt VRTSgab VRTSvxfen VRTSamf VRTSpython VRTSvcs VRTSvcsag VRTSvcsea VRTSdbed VRTSodm VRTSsfmh VRTSvbs VRTSvcswiz VRTSsfcpi VRTSglm VRTScavf VRTSgms' manage_vxfencing='false' base_os='rhel6' heartbeats_SAPs='{}' management_SAP='{}' boot_mode='bios'
+
+# There is an issue with "cluster_ID=1". This is being converted to an int in VCS code. It should be string.

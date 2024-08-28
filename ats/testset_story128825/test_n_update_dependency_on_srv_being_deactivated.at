@@ -1,0 +1,33 @@
+# Prerequisite - LITP deployment
+add-plugins plugins/set_deactivated
+runLitpScript ../cluster_common.atlib
+runLitpScript ../add_2_nodes_to_cluster.atlib
+
+# 1. Create failover service groups CS0 and CS1
+litp create -t vcs-clustered-service -p /deployments/test/clusters/cluster1/services/CS0 -o name=cs0 active=1 standby=1 node_list=node_1,node_2
+litp create -t service -p /software/services/service00 -o service_name=service00
+litp inherit -s /software/services/service00 -p /deployments/test/clusters/cluster1/services/CS0/applications/service00
+
+litp create -t vcs-clustered-service -p /deployments/test/clusters/cluster1/services/CS1 -o name=cs1 active=1 standby=1 node_list=node_1,node_2
+litp create -t service -p /software/services/service01 -o service_name=service01
+litp inherit -s /software/services/service01 -p /deployments/test/clusters/cluster1/services/CS1/applications/service01
+
+litp create_plan
+litp run_plan
+
+# 2. Create service group CS2 that deactivates CS1 and update dependency list of CS1
+litp create -t vcs-clustered-service -p /deployments/test/clusters/cluster1/services/CS2 -o name=cs2 active=1 standby=1 node_list=node_3,node_4 deactivates=CS1
+litp inherit -s /software/services/service01 -p /deployments/test/clusters/cluster1/services/CS2/applications/service01
+litp update -p /deployments/test/clusters/cluster1/services/CS1 -o dependency_list=CS0
+let __err1 --err_type ValidationError --err_vpath /deployments/test/clusters/cluster1/services/CS2 --err_message 'deactivates property cannot reference a vcs-clustered-service that is not in Applied state.'
+assertError --errors_length 1 __err1 create_plan
+
+# 3. Remove dependency list and update initial_online_dependency_list
+litp update -p /deployments/test/clusters/cluster1/services/CS1 -d dependency_list
+litp update -p /deployments/test/clusters/cluster1/services/CS1 -o initial_online_dependency_list=CS0
+assertError --errors_length 1 __err1 create_plan
+
+litp update -p /deployments/test/clusters/cluster1/services/CS1 -d initial_online_dependency_list
+litp create_plan
+
+add-plugins plugins/reset_gen_deact_task

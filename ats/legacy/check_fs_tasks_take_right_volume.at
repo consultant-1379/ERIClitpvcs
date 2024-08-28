@@ -1,0 +1,32 @@
+runLitpScript ../cluster_common.atlib
+
+# AT to reproduce LITPCDS-6406 where 
+
+litp create -t storage-profile -p /infrastructure/storage/storage_profiles/vx_sp -o volume_driver='vxvm'
+litp create -t volume-group    -p /infrastructure/storage/storage_profiles/vx_sp/volume_groups/vxvg1 -o volume_group_name='vxvg1'
+litp create -t file-system    -p /infrastructure/storage/storage_profiles/vx_sp/volume_groups/vxvg1/file_systems/fs1 -o mount_point='/fs1' type="vxfs" size=100G snap_size=0
+litp create -t physical-device -p /infrastructure/storage/storage_profiles/vx_sp/volume_groups/vxvg1/physical_devices/lun0 -o device_name='lun0'
+
+litp create -t volume-group    -p /infrastructure/storage/storage_profiles/vx_sp/volume_groups/vxvg2 -o volume_group_name='vxvg2'
+litp create -t file-system    -p /infrastructure/storage/storage_profiles/vx_sp/volume_groups/vxvg2/file_systems/fs1 -o mount_point='/fs2' type="vxfs" size=100G snap_size=0
+litp create -t physical-device -p /infrastructure/storage/storage_profiles/vx_sp/volume_groups/vxvg2/physical_devices/lun0 -o device_name='lun1'
+
+litp inherit -s /infrastructure/storage/storage_profiles/vx_sp -p /deployments/test/clusters/cluster1/storage_profile/vxvm_storage 
+
+litp create -t vcs-clustered-service -p /deployments/test/clusters/cluster1/services/cs1 -o name="versant_listener1" active=1 standby=1 node_list="node_1,node_2"
+litp create -t lsb-runtime -p /deployments/test/clusters/cluster1/services/cs1/runtimes/versant -o service_name="versant1"
+litp inherit -s /deployments/test/clusters/cluster1/storage_profile/vxvm_storage/volume_groups/vxvg1/file_systems/fs1 -p /deployments/test/clusters/cluster1/services/cs1/runtimes/versant/filesystems/vxfs1
+
+litp create -t vcs-clustered-service -p /deployments/test/clusters/cluster1/services/cs2 -o name="versant_listener2" active=1 standby=1 node_list="node_1,node_2"
+litp create -t lsb-runtime -p /deployments/test/clusters/cluster1/services/cs2/runtimes/versant -o service_name="versant2"
+litp inherit -s /deployments/test/clusters/cluster1/storage_profile/vxvm_storage/volume_groups/vxvg2/file_systems/fs1 -p /deployments/test/clusters/cluster1/services/cs2/runtimes/versant/filesystems/vxfs1
+
+litp create_plan
+
+# Assert we have the correct arguments for cs1
+assertCallbackTask callback_method /deployments/test/clusters/cluster1/services/cs1/runtimes/versant/filesystems/vxfs1 callback_func=cb_create_diskgroup res_name=Res_DG_cluster1_cs1_versant_vxfs1 sg_name=Grp_CS_cluster1_cs1 vx_dg_name=vxvg1 service_vpath=/deployments/test/clusters/cluster1/services/cs1
+assertCallbackTask callback_method /deployments/test/clusters/cluster1/services/cs1/runtimes/versant/filesystems/vxfs1 callback_func=cb_create_mount res_name=Res_Mnt_cluster1_cs1_versant_vxfs1 sg_name=Grp_CS_cluster1_cs1 mount_point=/fs1 vx_dg_name=vxvg1 vx_vol_name=fs1 vcs_dg_res_name=Res_DG_cluster1_cs1_versant_vxfs1 service_vpath=/deployments/test/clusters/cluster1/services/cs1
+
+# Assert we have the correct arguments for cs2
+assertCallbackTask callback_method /deployments/test/clusters/cluster1/services/cs2/runtimes/versant/filesystems/vxfs1 callback_func=cb_create_diskgroup res_name=Res_DG_cluster1_cs2_versant_vxfs1 sg_name=Grp_CS_cluster1_cs2 service_vpath=/deployments/test/clusters/cluster1/services/cs2 vx_dg_name=vxvg2 
+assertCallbackTask callback_method /deployments/test/clusters/cluster1/services/cs2/runtimes/versant/filesystems/vxfs1 callback_func=cb_create_mount res_name=Res_Mnt_cluster1_cs2_versant_vxfs1 sg_name=Grp_CS_cluster1_cs2 mount_point=/fs2 vx_vol_name=fs1 vcs_dg_res_name=Res_DG_cluster1_cs2_versant_vxfs1 service_vpath=/deployments/test/clusters/cluster1/services/cs2 vx_dg_name=vxvg2 

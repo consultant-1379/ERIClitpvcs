@@ -1,0 +1,26 @@
+# Quick note - the parallel functionality is tested by existing ats
+runLitpScript ../cluster_common.atlib
+
+# Create a failover service group
+litp create -t vcs-clustered-service -p /deployments/test/clusters/cluster1/services/CS1 -o name=cs1 -o node_list=node_1,node_2 active=1 standby=1
+
+# Create the services
+litp create -t service -p /software/services/service01 -o service_name=service01
+
+litp inherit -s /software/services/service01 -p /deployments/test/clusters/cluster1/services/CS1/applications/service01
+litp create -t ha-service-config -p /deployments/test/clusters/cluster1/services/CS1/ha_configs/s01
+
+litp create_plan
+litp run_plan
+
+litp create -t service -p /software/services/service02 -o service_name=service02
+litp inherit -s /software/services/service02 -p /deployments/test/clusters/cluster1/services/CS1/applications/service02
+litp create -t ha-service-config -p /deployments/test/clusters/cluster1/services/CS1/ha_configs/s02 -o service_id=service02
+
+assertError --err_message 'No ha-service-config item exists for application "service01"' --err_vpath /deployments/test/clusters/cluster1/services/CS1 create_plan
+assertError --err_message 'The "service_id" property must be set for the "ha-service-config" item if vcs-clustered service contains more than one service' --err_vpath /deployments/test/clusters/cluster1/services/CS1/ha_configs/s01 create_plan
+
+litp update -p /deployments/test/clusters/cluster1/services/CS1/ha_configs/s01 -o service_id=service01
+
+litp create_plan
+

@@ -1,0 +1,48 @@
+# An AT to test it is possible to expand a cluster which has fencing configured
+
+# Mock the fact calls to the system
+add-plugins ../patch_mco_agent
+
+runLitpScript ../cluster_common.atlib
+
+litp update -p /deployments/test/clusters/cluster1/nodes/node_1 -o node_id=1
+litp update -p /deployments/test/clusters/cluster1/nodes/node_2 -o node_id=2
+
+# Add in fencing disks
+litp create -p /deployments/test/clusters/cluster1/fencing_disks/fd1 -t disk -o uuid=123 size=100M name=fencing_disk_1
+litp create -p /deployments/test/clusters/cluster1/fencing_disks/fd2 -t disk -o uuid=234 size=100M name=fencing_disk_2
+litp create -p /deployments/test/clusters/cluster1/fencing_disks/fd3 -t disk -o uuid=345 size=100M name=fencing_disk_3
+
+litp create_plan
+assertConfigTask mn1 vcs::configure cluster1 /deployments/test/clusters/cluster1/nodes/node_1 number_of_nodes='1' heartbeats_MACs='{"eth3": "08:00:27:21:7D:BC", "eth2": "08:00:27:06:C0:61"}' hostname='mn1' clust_type='sfha' cluster_name='cluster1' fencing_dg_name='vxfencoorddg_1' cluster_ID='1' managment_MAC='{"eth0": "08:00:27:5B:C1:3F"}' cluster_UUID='16f764c0-8637-3668-a788-33d313f8ea20' license_key='ENTERPRISE' hostnames='{"1": "mn1", "0": "mn2"}' rpm_list='VRTSveki VRTSperl VRTSvlic VRTSspt VRTSvxvm VRTSaslapm VRTSvxfs VRTSfssdk VRTSllt VRTSgab VRTSvxfen VRTSamf VRTSpython VRTSvcs VRTSvcsag VRTSvcsea VRTSdbed VRTSodm VRTSsfmh VRTSvbs VRTSvcswiz VRTSsfcpi VRTSglm VRTScavf VRTSgms' manage_vxfencing='false' base_os='rhel6' heartbeats_SAPs='{}' management_SAP='{}' boot_mode='bios'
+assertConfigTask mn2 vcs::configure cluster1 /deployments/test/clusters/cluster1/nodes/node_2 number_of_nodes='1' heartbeats_MACs='{"eth3": "08:00:27:21:7D:B3", "eth2": "08:00:27:06:C0:62"}' hostname='mn2' clust_type='sfha' cluster_name='cluster1' fencing_dg_name='vxfencoorddg_1' cluster_ID='1' managment_MAC='{"eth0": "08:00:27:5B:C1:31"}' cluster_UUID='16f764c0-8637-3668-a788-33d313f8ea20' license_key='ENTERPRISE' hostnames='{"1": "mn1", "0": "mn2"}' rpm_list='VRTSveki VRTSperl VRTSvlic VRTSspt VRTSvxvm VRTSaslapm VRTSvxfs VRTSfssdk VRTSllt VRTSgab VRTSvxfen VRTSamf VRTSpython VRTSvcs VRTSvcsag VRTSvcsea VRTSdbed VRTSodm VRTSsfmh VRTSvbs VRTSvcswiz VRTSsfcpi VRTSglm VRTScavf VRTSgms' manage_vxfencing='false' base_os='rhel6' heartbeats_SAPs='{}' management_SAP='{}' boot_mode='bios'
+
+litp run_plan
+
+litp create -t system -p /infrastructure/systems/system_3 -o system_name=MN3VM
+
+litp create -t disk -p /infrastructure/systems/system_3/disks/disk0 -o name=hd0 size=56G bootable=true uuid=c29d5a97a382bbc3564dd03019
+
+litp create -t node -p /deployments/test/clusters/cluster1/nodes/node_3 -o hostname=mn3 node_id=3
+
+litp inherit -p /deployments/test/clusters/cluster1/nodes/node_3/system -s /infrastructure/systems/system_3
+litp inherit -p /deployments/test/clusters/cluster1/nodes/node_3/os -s /software/profiles/rhel_6_4
+litp inherit -p /deployments/test/clusters/cluster1/nodes/node_3/routes/default -s /infrastructure/networking/routes/def
+litp inherit -p /deployments/test/clusters/cluster1/nodes/node_3/storage_profile -s /infrastructure/storage/storage_profiles/profile_1
+
+litp create -t eth -p /deployments/test/clusters/cluster1/nodes/node_3/network_interfaces/nic_0 -o device_name=eth0 macaddress=08:00:27:5B:C1:9F network_name=mgmt ipaddress=10.10.10.103
+litp create -t eth -p /deployments/test/clusters/cluster1/nodes/node_3/network_interfaces/nic_2 -o device_name=eth2 macaddress=08:00:27:06:C0:91 network_name=heartbeat1
+litp create -t eth -p /deployments/test/clusters/cluster1/nodes/node_3/network_interfaces/nic_3 -o device_name=eth3 macaddress=08:00:27:21:7D:DC network_name=heartbeat2
+
+litp create_plan
+
+assertConfigTask mn1 vcs::configure cluster1 /deployments/test/clusters/cluster1/nodes/node_1 number_of_nodes='2' manage_vxfencing='true' heartbeats_MACs='{"eth3": "08:00:27:21:7D:BC", "eth2": "08:00:27:06:C0:61"}' hostname='mn1' clust_type='sfha' cluster_name='cluster1' fencing_dg_name='vxfencoorddg_1' cluster_ID='1' managment_MAC='{"eth0": "08:00:27:5B:C1:3F"}' cluster_UUID='16f764c0-8637-3668-a788-33d313f8ea20' license_key='ENTERPRISE' hostnames='{"1": "mn1", "0": "mn2", "2": "mn3"}' rpm_list='VRTSveki VRTSperl VRTSvlic VRTSspt VRTSvxvm VRTSaslapm VRTSvxfs VRTSfssdk VRTSllt VRTSgab VRTSvxfen VRTSamf VRTSpython VRTSvcs VRTSvcsag VRTSvcsea VRTSdbed VRTSodm VRTSsfmh VRTSvbs VRTSvcswiz VRTSsfcpi VRTSglm VRTScavf VRTSgms' base_os='rhel6' heartbeats_SAPs='{}' management_SAP='{}' boot_mode='bios'
+assertConfigTask mn2 vcs::configure cluster1 /deployments/test/clusters/cluster1/nodes/node_2 number_of_nodes='2' manage_vxfencing='true' heartbeats_MACs='{"eth3": "08:00:27:21:7D:B3", "eth2": "08:00:27:06:C0:62"}' hostname='mn2' clust_type='sfha' cluster_name='cluster1' fencing_dg_name='vxfencoorddg_1' cluster_ID='1' managment_MAC='{"eth0": "08:00:27:5B:C1:31"}' cluster_UUID='16f764c0-8637-3668-a788-33d313f8ea20' license_key='ENTERPRISE' hostnames='{"1": "mn1", "0": "mn2", "2": "mn3"}' rpm_list='VRTSveki VRTSperl VRTSvlic VRTSspt VRTSvxvm VRTSaslapm VRTSvxfs VRTSfssdk VRTSllt VRTSgab VRTSvxfen VRTSamf VRTSpython VRTSvcs VRTSvcsag VRTSvcsea VRTSdbed VRTSodm VRTSsfmh VRTSvbs VRTSvcswiz VRTSsfcpi VRTSglm VRTScavf VRTSgms' base_os='rhel6' heartbeats_SAPs='{}' management_SAP='{}' boot_mode='bios'
+assertConfigTask mn3 vcs::configure cluster1 /deployments/test/clusters/cluster1/nodes/node_3 number_of_nodes='2' manage_vxfencing='true' heartbeats_MACs='{"eth3": "08:00:27:21:7D:DC", "eth2": "08:00:27:06:C0:91"}' hostname='mn3' clust_type='sfha' cluster_name='cluster1' fencing_dg_name='vxfencoorddg_1' cluster_ID='1' managment_MAC='{"eth0": "08:00:27:5B:C1:9F"}' cluster_UUID='16f764c0-8637-3668-a788-33d313f8ea20' license_key='ENTERPRISE' hostnames='{"1": "mn1", "0": "mn2", "2": "mn3"}' rpm_list='VRTSveki VRTSperl VRTSvlic VRTSspt VRTSvxvm VRTSaslapm VRTSvxfs VRTSfssdk VRTSllt VRTSgab VRTSvxfen VRTSamf VRTSpython VRTSvcs VRTSvcsag VRTSvcsea VRTSdbed VRTSodm VRTSsfmh VRTSvbs VRTSvcswiz VRTSsfcpi VRTSglm VRTScavf VRTSgms' base_os='rhel6' heartbeats_SAPs='{}' management_SAP='{}' boot_mode='bios'
+
+assertNoCallbackTask callback_method /deployments/test/clusters/cluster1 callback_class=VcsIOFencingHelper callback_func=vx_io_fencing cluster_name=cluster1 nodes='["mn1", "mn2", "mn3"]'
+
+assertCallbackTask callback_method /deployments/test/clusters/cluster1 callback_class=VcsIOFencingHelper callback_func=vx_verify_io_fencing nodes='["mn3", "mn2", "mn1"]'
+assertCallbackTask callback_method /deployments/test/clusters/cluster1 callback_class=VcsCluster callback_func=vcs_poll_callback
+
+litp run_plan

@@ -1,0 +1,22 @@
+runLitpScript ../cluster_common.atlib
+
+# Create cups
+litp create -t service -p /software/services/cups -o service_name=cups
+litp create -t vcs-clustered-service -p /deployments/test/clusters/cluster1/services/cups -o active=2 standby=0 name="cups" node_list="node_1,node_2"
+litp inherit -s /software/services/cups -p /deployments/test/clusters/cluster1/services/cups/applications/cups
+
+# Create nfs
+litp create -t service -p /software/services/nfs -o service_name=nfs
+litp create -t vcs-clustered-service -p /deployments/test/clusters/cluster1/services/nfs -o active=2 standby=0 name="nfs" node_list="node_1,node_2" dependency_list=cups
+litp inherit -s /software/services/nfs -p /deployments/test/clusters/cluster1/services/nfs/applications/nfs
+
+litp create_plan
+litp run_plan
+
+litp load -p /deployments/test/clusters/cluster1/services/ -f ./xml/nfs_service_remove_dep.xml --replace
+
+litp create_plan
+
+assertCallbackTask callback_method /deployments/test/clusters/cluster1/services/nfs callback_func=update_remove_dependencies_callback callback_class=VcsServiceGroupHelper service_vpath=/deployments/test/clusters/cluster1/services/nfs cluster_item_id=cluster1 service_group_name='Grp_CS_cluster1_nfs'
+
+litp run_plan

@@ -1,0 +1,33 @@
+# This AT is in relation to litpcds-12962  http://jira-nam.lmera.ericsson.se/browse/LITPCDS-12962
+# The test is to install a vcs-cluster-service with an application, vip and file system.
+# cs_initial_online is set to off on the vcs-cluster so no online task will be created  
+# The plan is forced to fail on the file-system deport task
+# The test then checks that the vcs-cluster-service, application, and vip items are all in an Applied State
+
+
+
+runLitpScript ../cluster_common.atlib
+
+litp update -p /deployments/test/clusters/cluster1 -o cs_initial_online="off"
+litp create -t storage-profile -p /infrastructure/storage/storage_profiles/vx_sp -o volume_driver='vxvm'
+litp create -t volume-group    -p /infrastructure/storage/storage_profiles/vx_sp/volume_groups/vxvg1 -o volume_group_name='vx_dg'
+litp create -t file-system    -p /infrastructure/storage/storage_profiles/vx_sp/volume_groups/vxvg1/file_systems/versant_fs1 -o mount_point='/opt/ericsson/nms/versant' type="vxfs" size=100G snap_size=0
+litp create -t physical-device -p /infrastructure/storage/storage_profiles/vx_sp/volume_groups/vxvg1/physical_devices/lun0 -o device_name='lun0'
+
+litp inherit -s /infrastructure/storage/storage_profiles/vx_sp -p /deployments/test/clusters/cluster1/storage_profile/vxvm_storage
+
+litp create -t vcs-clustered-service -p /deployments/test/clusters/cluster1/services/cs1 -o name="versant_listener1" active=1 standby=1 node_list="node_1,node_2"
+litp create -t service -p /software/services/versant -o service_name=versantd
+litp inherit -p /deployments/test/clusters/cluster1/services/cs1/applications/versant -s /software/services/versant
+litp inherit -p /deployments/test/clusters/cluster1/services/cs1/filesystems/versant_mount -s /deployments/test/clusters/cluster1/storage_profile/vxvm_storage/volume_groups/vxvg1/file_systems/versant_fs1
+
+litp create -p /deployments/test/clusters/cluster1/services/cs1/ipaddresses/ip1 -t vip -o network_name='mgmt' ipaddress='10.10.10.155'
+
+
+litp create_plan
+
+failCallbackTask callback_method /deployments/test/clusters/cluster1/services/cs1/filesystems/versant_mount
+litp run_plan
+assertState -p /deployments/test/clusters/cluster1/services/cs1 Applied 
+assertState -p /deployments/test/clusters/cluster1/services/cs1/applications/versant Applied 
+assertState -p /deployments/test/clusters/cluster1/services/cs1/ipaddresses/ip1 Applied 

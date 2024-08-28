@@ -1,0 +1,7 @@
+runLitpScript ../cluster_common.atlib
+
+litp create_plan
+litp run_plan
+
+#Verify the Error that vcs seed threshold value cannot be set to anything other than a positive integer. 
+assertError --err_type ValidationError --err_property vcs_seed_threshold  --err_message 'Value outside range 1 - None' update -p /deployments/test/clusters/cluster1 -o vcs_seed_threshold=-1 

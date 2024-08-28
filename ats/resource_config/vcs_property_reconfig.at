@@ -1,0 +1,39 @@
+runLitpScript ../cluster_common.atlib
+
+# Verify validation errors on invalid values for online_timeout and offline_timeout
+assertError --err_type "ValidationError" --err_property "online_timeout" --err_message "Invalid value '0'." create -p /deployments/test/clusters/cluster1/services/cs1 -t vcs-clustered-service -o active=1 standby=0 name='cs1' online_timeout=0 offline_timeout=0 dependency_list="" node_list='node_1'
+assertError --err_type "ValidationError" --err_property "offline_timeout" --err_message "Invalid value '0'." create -p /deployments/test/clusters/cluster1/services/cs1 -t vcs-clustered-service -o active=1 standby=0 name='cs1' online_timeout=0 offline_timeout=0 dependency_list="" node_list='node_1'
+assertError --err_type "ValidationError" --err_property "online_timeout" --err_message "Invalid value '-1'." create -p /deployments/test/clusters/cluster1/services/cs1 -t vcs-clustered-service -o active=1 standby=0 name='cs1' online_timeout=-1 offline_timeout=-1 dependency_list="" node_list='node_1'
+assertError --err_type "ValidationError" --err_property "offline_timeout" --err_message "Invalid value '-1'." create -p /deployments/test/clusters/cluster1/services/cs1 -t vcs-clustered-service -o active=1 standby=0 name='cs1' online_timeout=-1 offline_timeout=-1 dependency_list="" node_list='node_1'
+
+# Verify valid values are correctly set
+litp create -p /deployments/test/clusters/cluster1/services/cs1 -t vcs-clustered-service -o active=1 standby=0 name='cs1' online_timeout=310 offline_timeout=320 dependency_list="" node_list='node_1'
+assertProperty /deployments/test/clusters/cluster1/services/cs1 -o online_timeout=310 offline_timeout=320
+
+# Verify reconfigure of online_timeout and offline_timeout properties
+litp update -p /deployments/test/clusters/cluster1/services/cs1 -o online_timeout=330 offline_timeout=340
+assertProperty /deployments/test/clusters/cluster1/services/cs1 -o online_timeout=330 offline_timeout=340
+
+# Verify default values are set after removal of online_timeout and offline_timeout properties
+litp update -p /deployments/test/clusters/cluster1/services/cs1 -d online_timeout offline_timeout
+assertProperty /deployments/test/clusters/cluster1/services/cs1 -o online_timeout=300 offline_timeout=300
+
+# Verify default values are set when online_timeout and offline_timeout values are not set
+litp create -p /deployments/test/clusters/cluster1/services/cs2 -t vcs-clustered-service -o active=1 standby=0 name='cs2' dependency_list="" node_list='node_1'
+assertProperty /deployments/test/clusters/cluster1/services/cs2 -o online_timeout=300 offline_timeout=300
+
+# Verify cleanup_command value is correctly set
+litp create -p /software/services/app1 -t service -o service_name='app1' start_command='/sbin/service app1 start' stop_command='/sbin/service app1 stop' status_command='/sbin/service app1 status' cleanup_command='/bin/cleanup_app.sh'
+assertProperty /software/services/app1 -o cleanup_command='/bin/cleanup_app.sh'
+
+# Verify reconfigure of cleanup_command property
+litp update -p /software/services/app1 -o cleanup_command='/bin/cleanup_app1.sh'
+assertProperty /software/services/app1 -o cleanup_command='/bin/cleanup_app1.sh'
+
+# Verify default values is set when cleanup_command is not set
+litp create -p /software/services/app2 -t service -o service_name='app2' start_command='/sbin/service app1 start' stop_command='/sbin/service app1 stop' status_command='/sbin/service app1 status'
+assertProperty /software/services/app2 -o cleanup_command='/bin/true'
+
+# Verify default values are set after removal of online_timeout and offline_timeout properties
+litp update -p /software/services/app1 -d cleanup_command
+assertProperty /software/services/app1 -o cleanup_command='/bin/true'

@@ -1,0 +1,31 @@
+# Prerequisite - LITP deployment
+runLitpScript ../cluster_common.atlib
+runLitpScript ../add_2_nodes_to_cluster.atlib
+
+# 1. Create storage profile
+litp create -t storage-profile -p /infrastructure/storage/storage_profiles/vx_sp -o volume_driver='vxvm'
+litp create -t volume-group    -p /infrastructure/storage/storage_profiles/vx_sp/volume_groups/vxvg1 -o volume_group_name='vx_dg'
+litp create -t file-system    -p /infrastructure/storage/storage_profiles/vx_sp/volume_groups/vxvg1/file_systems/fs1 -o mount_point='/opt/ericsson/nms/fs1' type="vxfs" size=100G snap_size=0
+litp create -t physical-device -p /infrastructure/storage/storage_profiles/vx_sp/volume_groups/vxvg1/physical_devices/lun0 -o device_name='lun0'
+litp inherit -p /deployments/test/clusters/cluster1/storage_profile/vx_sp -s /infrastructure/storage/storage_profiles/vx_sp
+
+# 2. Create failover service group CS1
+litp create -t vcs-clustered-service -p /deployments/test/clusters/cluster1/services/CS1 -o name=cs1 active=1 standby=1 node_list=node_1,node_2
+litp create -t service -p /software/services/service01 -o service_name=service01
+litp inherit -s /software/services/service01 -p /deployments/test/clusters/cluster1/services/CS1/applications/service01
+litp inherit -s /deployments/test/clusters/cluster1/storage_profile/vx_sp/volume_groups/vxvg1/file_systems/fs1 -p /deployments/test/clusters/cluster1/services/CS1/filesystems/fs1_mount
+
+litp create_plan
+litp run_plan
+
+# 3. Update descendant item of CS1 and create service group CS2 that deactivates CS1
+litp update -p /deployments/test/clusters/cluster1/storage_profile/vx_sp/volume_groups/vxvg1/file_systems/fs1 -o snap_size=100
+
+litp create -t vcs-clustered-service -p /deployments/test/clusters/cluster1/services/CS2 -o name=cs2 active=1 standby=1 node_list=node_3,node_4 deactivates=CS1
+litp inherit -s /software/services/service01 -p /deployments/test/clusters/cluster1/services/CS2/applications/service01
+litp inherit -s /deployments/test/clusters/cluster1/storage_profile/vx_sp/volume_groups/vxvg1/file_systems/fs1 -p /deployments/test/clusters/cluster1/services/CS2/filesystems/fs1_mount
+
+# 3. Assert no error re duplicate filesystems
+litp create_plan
+assertCallbackTask callback_method /deployments/test/clusters/cluster1/services/CS1 callback_func=delete_callback
+assertCallbackTask callback_method /deployments/test/clusters/cluster1/services/CS2 callback_func=install_callback

@@ -1,0 +1,16 @@
+# Test Case 03.
+
+# To ensure that it is not possible to create, a "vcs-cluster" with "critical_service" property
+# when cluster_type is "vcs".(Manual - Run once, should be covered in AT's.)
+
+# 1. Create a "vcs-cluster" with "critical_service" property and cluster type "vcs".
+runLitpScript ../testset_common/common.atlib
+litp update -p /deployments/test/clusters/cluster1 -o critical_service='cs1' cluster_type=vcs
+
+# 2. Create critical service
+litp create -t service -p /software/services/mock -o service_name='mocklsb'
+litp create -t vcs-clustered-service -p /deployments/test/clusters/cluster1/services/cs1/ -o name="cs1" standby=1 active=1 node_list="node_1,node_2"
+litp inherit -s /software/services/mock -p /deployments/test/clusters/cluster1/services/cs1/applications/mock
+
+# 3. Create plan and check for error messages.
+assertError --err_message 'The "critical_service" property can only be defined for "vcs-cluster" of type "sfha".' --err_vpath /deployments/test/clusters/cluster1 create_plan

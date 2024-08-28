@@ -1,0 +1,17 @@
+runLitpScript cluster_common.atlib
+
+#Create a vcs service group
+litp create -t service -p /software/services/mock -o service_name='mocklsb'
+litp create -p /deployments/test/clusters/cluster1/services/cs1 -t vcs-clustered-service -o name="clustered_service_1" active=2 standby=0 online_timeout=600 offline_timeout=600 node_list='node_1,node_2'
+litp inherit -s /software/services/mock -p /deployments/test/clusters/cluster1/services/cs1/applications/mock
+
+litp create -t service -p /software/services/mock2 -o service_name='mock2'
+litp create -p /deployments/test/clusters/cluster1/services/cs2 -t vcs-clustered-service -o name="clustered_service_2" active=2 standby=0 online_timeout=600 offline_timeout=600 node_list='node_1,node_2'
+litp inherit -s /software/services/mock2 -p /deployments/test/clusters/cluster1/services/cs2/applications/mock2
+
+litp create_plan
+litp run_plan
+
+litp update -p /deployments/test/clusters/cluster1/services/cs2 -o node_list='node_2,node_1'
+
+assertError create_plan --err_type "DoNothingPlanError" --err_message "Create plan failed: no tasks were generated"

@@ -1,0 +1,39 @@
+##############
+# This AT is for development testing
+#
+# Goal: check if invalid values to vcs_seed_threshold property of vcs-cluster 
+#       item generates validation error and fails if trying to create a plan
+#
+# Scenario:
+#       Inherited from cluster_common.atlib
+#
+# Actions:
+#       Set vcs_seed_threshold to invalid values
+#
+
+####
+# Bulding the scenario
+#
+assertNoPlan
+runLitpScript cluster_common.atlib
+
+#####
+# Fails at the litp update command
+#
+let __err_validation --err_property vcs_seed_threshold --err_type ValidationError
+
+let __err_out_of_range __err_validation --err_message "Value outside range 0 - 50"
+assertError __err_validation update -p /deployments/test/clusters/cluster1 -o vcs_seed_threshold='-1'
+let __err_invalid_value __err_validation --err_message "Invalid value '', numeric value expected"
+assertError __err_invalid_value update -p /deployments/test/clusters/cluster1 -o vcs_seed_threshold=''
+
+let __err_invalid_value_abc  __err_validation --err_message "Invalid value 'abc', numeric value expected"
+assertError __err_invalid_value_abc update -p /deployments/test/clusters/cluster1 -o vcs_seed_threshold='abc'
+
+#####
+# Fails to create a plan
+#
+let __err_create_plan_fails __err_validation --err_message "Property 'vcs_seed_threshold' must be set to a value from 1 up to the number of nodes in the cluster (2 nodes)."
+litp update -p /deployments/test/clusters/cluster1 -o vcs_seed_threshold='3'
+assertError __err_create_plan_fails create_plan
+

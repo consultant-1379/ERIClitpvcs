@@ -1,0 +1,24 @@
+runLitpScript ../cluster_common.atlib
+
+litp create -p /infrastructure/networking/networks/skynet -t network -o name=skynet subnet=100.100.100.0/24
+litp create -p /deployments/test/clusters/cluster1/nodes/node_1/network_interfaces/nic_4  -t eth -o device_name=eth4 macaddress=08:00:27:21:7D:B2 network_name=skynet ipaddress=100.100.100.101
+litp create -p /deployments/test/clusters/cluster1/nodes/node_2/network_interfaces/nic_4  -t eth -o device_name=eth4 macaddress=08:00:27:21:7D:B1 network_name=skynet ipaddress=100.100.100.100
+
+# Create 2 network hosts for skynet
+litp create -t vcs-network-host -p /deployments/test/clusters/cluster1/network_hosts/net1 -o network_name="skynet" ip="100.100.100.102"
+litp create -t vcs-network-host -p /deployments/test/clusters/cluster1/network_hosts/net2 -o network_name="skynet" ip="100.100.100.103"
+
+litp create_plan
+litp run_plan
+
+# Update IP address of nic_4 on node_1
+litp update -p /deployments/test/clusters/cluster1/nodes/node_1/network_interfaces/nic_4 -o ipaddress=100.100.100.120
+# Remove a network_host
+litp remove -p /deployments/test/clusters/cluster1/network_hosts/net2
+
+litp create_plan
+
+# Check tasks are generated for both interfaces
+assertCallbackTask callback_method /deployments/test/clusters/cluster1/nodes/node_1/network_interfaces/nic_4 callback_func=update_network_hosts callback_class=VCSNICServiceGroupUpdateHelper resource=Res_NIC_cluster1_eth4 sys=mn1 addresses='["100.100.100.102"]'
+assertCallbackTask callback_method /deployments/test/clusters/cluster1/nodes/node_2/network_interfaces/nic_4 callback_func=update_network_hosts callback_class=VCSNICServiceGroupUpdateHelper resource=Res_NIC_cluster1_eth4 sys=mn2 addresses='["100.100.100.102"]'
+

@@ -1,0 +1,23 @@
+#############################################################
+#	TORF-124980:
+#		test_13_n_migrate_SG_to_nodes_that_do_not_exist
+#		Steps:
+#			1. Create SG with type FO
+#			2. Create_plan
+#			3. Update SGs to be migrated to different nodes
+#			4. Create_plan
+#			5. Assert Validation errors are received
+#
+#############################################################
+runLitpScript ../testset_common/common.atlib
+
+litp create -t service -p /software/services/mock -o service_name='mocklsb'
+litp create -t vcs-clustered-service -p /deployments/test/clusters/cluster1/services/cs1/ -o name="cs1" standby=1 active=1 node_list="node_1,node_2"
+litp inherit -s /software/services/mock -p /deployments/test/clusters/cluster1/services/cs1/applications/mock
+
+litp create_plan
+litp run_plan
+
+litp update -p /deployments/test/clusters/cluster1/services/cs1/ -o node_list="node_3,node_4"
+
+assertError create_plan

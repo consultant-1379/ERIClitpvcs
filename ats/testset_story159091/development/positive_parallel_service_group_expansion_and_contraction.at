@@ -1,0 +1,76 @@
+# An AT to test its possible to expand and contract a parallel service with node intersection.
+# Aim is to ensure that where there is node intersection, that there is no outage on that node.
+
+
+runLitpScript ../../cluster_common.atlib
+runLitpScript ../../add_4_nodes_to_cluster.atlib
+
+
+# That node node1 and node2 get removed in the second plan and node4 and node5 added
+#
+# Create the vcs-cluster-service
+litp create -t service -p /software/services/mock -o service_name='mocklsb'
+litp create -t vcs-clustered-service -p /deployments/test/clusters/cluster1/services/cs1 -o name="cs1" standby=0 active=3 node_list="node_1,node_2,node_3" dependency_list=""
+litp inherit -s /software/services/mock -p /deployments/test/clusters/cluster1/services/cs1/applications/mock
+litp create -t eth -p /deployments/test/clusters/cluster1/nodes/node_1/network_interfaces/nic_A -o device_name=eth0 macaddress=08:00:27:5B:C1:5F network_name=mgmt ipaddress=10.10.10.111
+litp create -t eth -p /deployments/test/clusters/cluster1/nodes/node_2/network_interfaces/nic_B -o device_name=eth0 macaddress=08:00:27:5B:C1:4F network_name=mgmt ipaddress=10.10.10.112
+litp create -t eth -p /deployments/test/clusters/cluster1/nodes/node_2/network_interfaces/nic_C -o device_name=eth0 macaddress=08:00:27:5B:C1:6F network_name=mgmt ipaddress=10.10.10.113
+
+litp create_plan
+litp run_plan
+
+litp update -p /deployments/test/clusters/cluster1/services/cs1/ -o node_list="node_3,node_4,node_5"
+
+litp create_plan
+litp run_plan
+assertCallbackTask callback_method /deployments/test/clusters/cluster1/services/cs1 callback_func=contraction_callback callback_class=VcsServiceGroupHelper
+assertCallbackTask callback_method /deployments/test/clusters/cluster1/services/cs1 callback_func=update_callback callback_class=VcsServiceGroupHelper
+assertCallbackTask callback_method /deployments/test/clusters/cluster1/services/cs1 callback_func=online_callback callback_class=VcsSGOnlineHelper
+
+#--------------------------------------------------------------------------------------------------------------
+
+# That node_4 and node_5 get removed in the plan and node2 added
+
+litp update -p /deployments/test/clusters/cluster1/services/cs1/ -o active=2 node_list="node_3,node_2"
+
+litp create_plan
+litp run_plan
+assertCallbackTask callback_method /deployments/test/clusters/cluster1/services/cs1 callback_func=contraction_callback callback_class=VcsServiceGroupHelper
+assertCallbackTask callback_method /deployments/test/clusters/cluster1/services/cs1 callback_func=update_callback callback_class=VcsServiceGroupHelper
+assertCallbackTask callback_method /deployments/test/clusters/cluster1/services/cs1 callback_func=online_callback callback_class=VcsSGOnlineHelper
+
+#--------------------------------------------------------------------------------------------------------------
+
+# That node_3 get removed in the plan and node_1 added
+
+litp update -p /deployments/test/clusters/cluster1/services/cs1/ -o active=2 node_list="node_1,node_2"
+
+litp create_plan
+litp run_plan
+assertCallbackTask callback_method /deployments/test/clusters/cluster1/services/cs1 callback_func=contraction_callback callback_class=VcsServiceGroupHelper
+assertCallbackTask callback_method /deployments/test/clusters/cluster1/services/cs1 callback_func=update_callback callback_class=VcsServiceGroupHelper
+assertCallbackTask callback_method /deployments/test/clusters/cluster1/services/cs1 callback_func=online_callback callback_class=VcsSGOnlineHelper
+
+#--------------------------------------------------------------------------------------------------------------
+
+# That node_2 get removed in the plan and node_3, node_4 and node_5 added
+
+litp update -p /deployments/test/clusters/cluster1/services/cs1/ -o active=4  node_list="node_1,node_3,node_4,node_5"
+
+litp create_plan
+litp run_plan
+assertCallbackTask callback_method /deployments/test/clusters/cluster1/services/cs1 callback_func=contraction_callback callback_class=VcsServiceGroupHelper
+assertCallbackTask callback_method /deployments/test/clusters/cluster1/services/cs1 callback_func=update_callback callback_class=VcsServiceGroupHelper
+assertCallbackTask callback_method /deployments/test/clusters/cluster1/services/cs1 callback_func=online_callback callback_class=VcsSGOnlineHelper
+
+#--------------------------------------------------------------------------------------------------------------
+
+# That node_3, node_4 and node_5 get removed in the plan.
+
+litp update -p /deployments/test/clusters/cluster1/services/cs1/ -o active=1  node_list="node_1"
+
+litp create_plan
+litp run_plan
+assertCallbackTask callback_method /deployments/test/clusters/cluster1/services/cs1 callback_func=contraction_callback callback_class=VcsServiceGroupHelper
+
+

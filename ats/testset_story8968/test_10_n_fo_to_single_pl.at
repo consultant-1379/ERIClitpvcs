@@ -1,0 +1,25 @@
+# Test Case 10.
+
+# To ensure that it is not possible to update, a vcs-clustered-service from failover to one node parallel mode(1:1 to 1:0).
+
+# 1. Create service object and "clustered-service" in failover mode and deploy.
+
+runLitpScript ../testset_common/common.atlib
+
+litp create -t service -p /software/services/mock1 -o service_name='mocklsb1'
+
+litp create -t vcs-clustered-service -p /deployments/test/clusters/cluster1/services/cs1/ -o name="cs1" standby=1 active=1 node_list="node_1,node_2"
+litp inherit -s /software/services/mock1 -p /deployments/test/clusters/cluster1/services/cs1/applications/mock
+
+litp create_plan
+
+litp run_plan
+
+# 2. Update the previously created service object to one node in parallel mode.
+
+litp update -p /deployments/test/clusters/cluster1/services/cs1/ -o standby=0 active=1 node_list="node_1"
+
+# 3. Ensure a validation error is returned after create plan indicating the issue.
+
+let __err_reconf --err_type ValidationError --err_message 'Create plan failed: Reconfigure from failover to parallel expects the same node list'
+assertError __err_reconf --errors_length 1 --err_vpath /deployments/test/clusters/cluster1/services/cs1 create_plan

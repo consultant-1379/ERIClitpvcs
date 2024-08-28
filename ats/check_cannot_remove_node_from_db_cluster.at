@@ -1,0 +1,57 @@
+##############
+# This AT is for development testing
+#
+# Goal: check if we get errors when trying to create a plan to remove a node
+#       from a DB Cluster.
+#
+# Scenario:
+#       Create DB Cluster with 4 nodes using:
+#       - cluster_common.atlib
+#       - add_2_nodes_to_cluster.atlib
+#       Add 3 Fencing Disks
+#
+# Note:
+#       DB Clusters are defined as VCS clusters with Fencing Disk, so
+#       for this verification we add 3 fencing disks and tries to remove
+#       a node from the cluster.
+
+####
+# Bulding the scenario
+#
+assertNoPlan
+runLitpScript cluster_common.atlib
+runLitpScript add_2_nodes_to_cluster.atlib
+
+#
+# Create Fencing Disks
+#
+litp create -p /deployments/test/clusters/cluster1/fencing_disks/fd1 -t disk -o uuid=1abcdef size=100M name=fencing_disk_1
+litp create -p /deployments/test/clusters/cluster1/fencing_disks/fd2 -t disk -o uuid=2abcdef size=100M name=fencing_disk_2
+litp create -p /deployments/test/clusters/cluster1/fencing_disks/fd3 -t disk -o uuid=3abcdef size=100M name=fencing_disk_3
+
+litp create_plan
+litp run_plan
+
+assertPlanState successful
+assertState -p /deployments/test/clusters/cluster1/fencing_disks/fd1 Applied
+assertState -p /deployments/test/clusters/cluster1/fencing_disks/fd2 Applied
+assertState -p /deployments/test/clusters/cluster1/fencing_disks/fd3 Applied
+
+#####
+# Test we face errors trying remove the node from a DB Cluster
+#
+let __err_create_plan_fails_node2 __err_validation --err_message 'Removal of node "mn2" from cluster "cluster1" is not supported because this cluster has fencing disks.'
+let __err_create_plan_fails_node3 __err_validation --err_message 'Removal of node "mn3" from cluster "cluster1" is not supported because this cluster has fencing disks.'
+
+# Remove node
+litp remove -p /deployments/test/clusters/cluster1/nodes/node_2
+assertState -p /deployments/test/clusters/cluster1/nodes/node_2 ForRemoval
+
+litp remove -p /deployments/test/clusters/cluster1/nodes/node_3
+assertState -p /deployments/test/clusters/cluster1/nodes/node_3 ForRemoval
+
+# Changing Seed Threshold to reflect the new number of nodes
+litp update -p /deployments/test/clusters/cluster1 -o vcs_seed_threshold='2'
+
+
+assertError __err_create_plan_fails_node2 __err_create_plan_fails_node3 create_plan

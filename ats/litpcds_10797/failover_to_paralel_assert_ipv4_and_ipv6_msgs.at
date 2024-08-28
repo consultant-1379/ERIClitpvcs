@@ -1,0 +1,24 @@
+runLitpScript ../cluster_common.atlib
+
+litp create -t service -p /software/services/mock -o service_name='mocklsb'
+
+litp create -t vcs-clustered-service -p /deployments/test/clusters/cluster1/services/cs1/ -o name="cs1" standby=1 active=1 node_list="node_1,node_2"
+litp inherit -s /software/services/mock -p /deployments/test/clusters/cluster1/services/cs1/applications/mock
+litp create -t vip -p /deployments/test/clusters/cluster1/services/cs1/ipaddresses/ip1 -o network_name='mgmt' ipaddress='10.10.10.155'
+litp create -t vip -p /deployments/test/clusters/cluster1/services/cs1/ipaddresses/ip2 -o network_name='mgmt' ipaddress='10.10.10.156'
+litp create -t vip -p /deployments/test/clusters/cluster1/services/cs1/ipaddresses/ip3 -o network_name='mgmt' ipaddress='10.10.10.157'
+litp create -t vip -p /deployments/test/clusters/cluster1/services/cs1/ipaddresses/ip10 -o network_name='mgmt' ipaddress='2001:abcd:ef::2/64'
+
+litp create_plan
+litp run_plan
+
+litp update -p /deployments/test/clusters/cluster1/services/cs1/ -o standby=0 active=2
+assertError --err_message 'The number of "IPv4" VIP items for network "mgmt" must be a multiple of active property of vcs-clustered-service "cs1".' create_plan
+assertError --err_message 'The number of "IPv4" VIP items per node for network "mgmt" in vcs-clustered-service "cs1" must be the same after change of active property from "1" to "2".' create_plan
+assertError --err_message 'The number of "IPv6" VIP items per node for network "mgmt" in vcs-clustered-service "cs1" must be the same after change of active property from "1" to "2".' create_plan
+litp create -t vip -p /deployments/test/clusters/cluster1/services/cs1/ipaddresses/ip4 -o network_name='mgmt' ipaddress='10.10.10.158'
+litp create -t vip -p /deployments/test/clusters/cluster1/services/cs1/ipaddresses/ip5 -o network_name='mgmt' ipaddress='10.10.10.159'
+litp create -t vip -p /deployments/test/clusters/cluster1/services/cs1/ipaddresses/ip6 -o network_name='mgmt' ipaddress='10.10.10.160'
+litp create -t vip -p /deployments/test/clusters/cluster1/services/cs1/ipaddresses/ip11 -o network_name='mgmt' ipaddress='2001:abcd:ef::3/64'
+litp create_plan
+assertCallbackTask callback_method /deployments/test/clusters/cluster1/services/cs1/ipaddresses/ip1 callback_func=vip_callback callback_class=NetworkResourceHelper network_name=mgmt

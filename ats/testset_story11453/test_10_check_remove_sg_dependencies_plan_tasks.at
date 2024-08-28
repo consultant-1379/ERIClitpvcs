@@ -1,0 +1,46 @@
+runLitpScript ../cluster_common.atlib
+
+# Create cs1
+litp create -t service -p /software/services/mock -o service_name='mocklsb'
+litp create -t vcs-clustered-service -p /deployments/test/clusters/cluster1/services/cs1/ -o name="cs1" standby=0 active=2 node_list="node_1,node_2"
+litp inherit -s /software/services/mock -p /deployments/test/clusters/cluster1/services/cs1/applications/mock
+
+# Create cs2
+litp create -t service -p /software/services/mock2 -o service_name='mocklsb2'
+litp create -t vcs-clustered-service -p /deployments/test/clusters/cluster1/services/cs2/ -o name="cs2" standby=0 active=2 node_list="node_1,node_2" dependency_list=cs1,cs4
+litp inherit -s /software/services/mock2 -p /deployments/test/clusters/cluster1/services/cs2/applications/mock2
+
+# Create cs4
+litp create -t service -p /software/services/mock4 -o service_name='mocklsb4'
+litp create -t vcs-clustered-service -p /deployments/test/clusters/cluster1/services/cs4 -o name="cs4" standby=0 active=2 node_list="node_1,node_2"
+litp inherit -s /software/services/mock4 -p /deployments/test/clusters/cluster1/services/cs4/applications/mock4
+
+litp create_plan
+litp run_plan
+
+# Update CS2 to not depend on CS4, only CS1
+litp update -p /deployments/test/clusters/cluster1/services/cs2/ -o dependency_list="cs1"
+
+litp create -t package -p /software/items/pkg1 -o name=foobar version=0.0.1-1
+litp inherit -p /deployments/test/clusters/cluster1/nodes/node_1/items/pkg1 -s /software/items/pkg1
+litp inherit -p /deployments/test/clusters/cluster1/nodes/node_2/items/pkg1 -s /software/items/pkg1
+
+litp create_plan
+
+assertNoCallbackTask callback_method /deployments/test/clusters/cluster1/services/cs2 callback_func=update_dependencies_callback callback_class=VcsServiceGroupHelper service_vpath=/deployments/test/clusters/cluster1/services/cs2 cluster_item_id=cluster1 service_group_name='Grp_CS_cluster1_cs2'
+
+# Ensure that the task create is before a node lock
+let __task_update_deps_rm CallbackTask callback_method /deployments/test/clusters/cluster1/services/cs2 callback_func=update_remove_dependencies_callback callback_class=VcsServiceGroupHelper service_vpath=/deployments/test/clusters/cluster1/services/cs2 cluster_item_id=cluster1 service_group_name='Grp_CS_cluster1_cs2'
+
+let __task_lock_node1 CallbackTask lock_node /deployments/test/clusters/cluster1/nodes/node_1
+let __task_unlock_node1 CallbackTask unlock_node /deployments/test/clusters/cluster1/nodes/node_1
+let __task_lock_node2 CallbackTask lock_node /deployments/test/clusters/cluster1/nodes/node_2
+let __task_unlock_node2 CallbackTask unlock_node /deployments/test/clusters/cluster1/nodes/node_2
+
+assertTaskBeforeTask __task_update_deps_rm __task_lock_node1
+assertTaskBeforeTask __task_update_deps_rm __task_unlock_node1
+assertTaskBeforeTask __task_update_deps_rm __task_lock_node2
+assertTaskBeforeTask __task_update_deps_rm __task_unlock_node2
+
+
+litp run_plan

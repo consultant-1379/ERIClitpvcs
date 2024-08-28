@@ -1,0 +1,61 @@
+##############
+# This AT is for development testing
+#
+# Goal: check if fail to create a plan when IPv6 VIPs
+#       (in the same network) does not have the same
+#       PrefixLen.
+#
+# Scenario:
+#       Inherited from cluster_common_with_vips.atlib
+#
+# Actions:
+#       Update IPv6 VIPs ipaddresses within the traffic1
+#       network with different PrefixLen.
+#
+
+####
+# Bulding the scenario
+#
+assertNoPlan
+runLitpScript cluster_common_with_vips.atlib
+litp create_plan
+litp run_plan
+
+####
+# Check built scenario
+#
+assertPlanState successful
+assertState -p /deployments/d1/clusters/c1 Applied
+
+####
+# Actions
+#
+litp update -p /deployments/d1/clusters/c1/services/PL_cups/ipaddresses/PL_cups_vip_3 -o ipaddress=1001::1:10/11
+litp update -p /deployments/d1/clusters/c1/services/PL_cups/ipaddresses/PL_cups_vip_4 -o ipaddress=1001::1:11/11
+litp update -p /deployments/d1/clusters/c1/services/FO_cups/ipaddresses/FO_cups_vip_3 -o ipaddress=1001::1:12/22
+litp update -p /deployments/d1/clusters/c1/services/FO_cups/ipaddresses/FO_cups_vip_4 -o ipaddress=1001::1:13/22
+litp update -p /deployments/d1/clusters/c1/services/FO_nscd/ipaddresses/FO_nscd_vip_3 -o ipaddress=1001::1:20/33
+litp update -p /deployments/d1/clusters/c1/services/FO_nscd/ipaddresses/FO_nscd_vip_4 -o ipaddress=1001::1:21/33
+litp update -p /deployments/d1/clusters/c1/services/PL_nscd/ipaddresses/PL_nscd_vip_3 -o ipaddress=1001::1:22/44
+litp update -p /deployments/d1/clusters/c1/services/PL_nscd/ipaddresses/PL_nscd_vip_4 -o ipaddress=1001::1:23/44
+litp update -p /deployments/d1/clusters/c1/services/FO_samba/ipaddresses/FO_samba_vip_3 -o ipaddress=1001::1:30/55
+litp update -p /deployments/d1/clusters/c1/services/FO_samba/ipaddresses/FO_samba_vip_4 -o ipaddress=1001::1:31/55
+litp update -p /deployments/d1/clusters/c1/services/PL_samba/ipaddresses/PL_samba_vip_3 -o ipaddress=1001::1:32
+litp update -p /deployments/d1/clusters/c1/services/PL_samba/ipaddresses/PL_samba_vip_4 -o ipaddress=1001::1:33
+
+#####
+# Create Plan
+#
+let __err_prefix_11 --err_type ValidationError  --err_vpath '/infrastructure/networking/networks/traffic1' --err_message "Network \"traffic1\" has multiple IPv6 PrefixLen defined on VIPs. For PrefixLen \"11\" found the VIPs: \"[u'/deployments/d1/clusters/c1/services/PL_cups/ipaddresses/PL_cups_vip_3', u'/deployments/d1/clusters/c1/services/PL_cups/ipaddresses/PL_cups_vip_4']\""
+
+let __err_prefix_22 --err_type ValidationError  --err_vpath '/infrastructure/networking/networks/traffic1' --err_message "Network \"traffic1\" has multiple IPv6 PrefixLen defined on VIPs. For PrefixLen \"22\" found the VIPs: \"[u'/deployments/d1/clusters/c1/services/FO_cups/ipaddresses/FO_cups_vip_4', u'/deployments/d1/clusters/c1/services/FO_cups/ipaddresses/FO_cups_vip_3']\""
+
+let __err_prefix_33 --err_type ValidationError  --err_vpath '/infrastructure/networking/networks/traffic1' --err_message "Network \"traffic1\" has multiple IPv6 PrefixLen defined on VIPs. For PrefixLen \"33\" found the VIPs: \"[u'/deployments/d1/clusters/c1/services/FO_nscd/ipaddresses/FO_nscd_vip_4', u'/deployments/d1/clusters/c1/services/FO_nscd/ipaddresses/FO_nscd_vip_3']\""
+
+let __err_prefix_44 --err_type ValidationError  --err_vpath '/infrastructure/networking/networks/traffic1' --err_message "Network \"traffic1\" has multiple IPv6 PrefixLen defined on VIPs. For PrefixLen \"44\" found the VIPs: \"[u'/deployments/d1/clusters/c1/services/PL_nscd/ipaddresses/PL_nscd_vip_4', u'/deployments/d1/clusters/c1/services/PL_nscd/ipaddresses/PL_nscd_vip_3']\""
+
+let __err_prefix_55 --err_type ValidationError  --err_vpath '/infrastructure/networking/networks/traffic1' --err_message "Network \"traffic1\" has multiple IPv6 PrefixLen defined on VIPs. For PrefixLen \"55\" found the VIPs: \"[u'/deployments/d1/clusters/c1/services/FO_samba/ipaddresses/FO_samba_vip_3', u'/deployments/d1/clusters/c1/services/FO_samba/ipaddresses/FO_samba_vip_4']\""
+
+let __err_prefix_64 --err_type ValidationError  --err_vpath '/infrastructure/networking/networks/traffic1' --err_message "Network \"traffic1\" has multiple IPv6 PrefixLen defined on VIPs. For PrefixLen \"64\" found the VIPs: \"[u'/deployments/d1/clusters/c1/services/PL_samba/ipaddresses/PL_samba_vip_4', u'/deployments/d1/clusters/c1/services/PL_samba/ipaddresses/PL_samba_vip_3']\""
+
+assertError __err_prefix_11 __err_prefix_22 __err_prefix_33 __err_prefix_44 __err_prefix_55 __err_prefix_64 create_plan

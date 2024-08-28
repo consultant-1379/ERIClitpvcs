@@ -1,0 +1,22 @@
+runLitpScript infrastructure.atlib
+runLitpScript node1.atlib
+runLitpScript node2.atlib
+runLitpScript node3.atlib
+runLitpScript node4.atlib
+
+add-plugins facter_mock_plugin_1234
+
+litp create_plan
+litp run_plan
+
+litp create -t vcs-clustered-service -p /deployments/test/clusters/cluster1/services/cs1 -o name="service1" active=1 standby=1 node_list="node_1,node_2"
+litp create -t service -p /software/services/service1 -o service_name=service1
+litp inherit -s /software/services/service1 -p /deployments/test/clusters/cluster1/services/cs1/applications/service1
+
+litp create_plan
+litp run_plan
+
+litp remove -p /deployments/test/clusters/cluster1/nodes/node_2
+
+assertError --err_message 'Create plan failed: Node node_2 not in cluster cluster1 as it is marked for removal' create_plan
+

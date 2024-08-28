@@ -1,0 +1,73 @@
+######################################################
+# TORF-128825:
+#     test_32_p_deactivate_multiple_CSs_in_same_plan_with_different_clusters
+# Description:
+#     Test to verify a user can have more than one CS to deactivate multiple
+#     CSs during the same plan, provided the CSs are in different clusters
+# Steps:
+#     Create 2 CSs in two seperate clusters
+#     Create/ Run Plan
+#     Create 2 additional CS that tries deactivate the first two CS in each
+#     cluster respectfully
+#     Create Plan
+#     Ensure no validation message is received
+# Result:
+#     Multiple CSs can be deactivated provided they are not in the same cluster
+######################################################
+
+# Prerequisite - LITP deployment
+runLitpScript ../cluster_common.atlib
+runLitpScript ../add_2_nodes_to_cluster.atlib
+
+# 1. Setup second Cluster
+litp create -p /deployments/test/clusters/cluster2 -t vcs-cluster -o cluster_type=sfha llt_nets="heartbeat1,heartbeat2" low_prio_net="mgmt" cluster_id="2"
+
+# 2. add node systems for nodes 5 and 6
+litp create -p /infrastructure/systems/system_5 -t system -o system_name=MN5VM
+litp create -p /infrastructure/systems/system_6 -t system -o system_name=MN6VM
+
+# 3. Setup Node5
+litp create -p /deployments/test/clusters/cluster2/nodes/node_5                             -t node             -o hostname=mn5
+litp inherit -p /deployments/test/clusters/cluster2/nodes/node_5/system                     -s              /infrastructure/systems/system_5
+litp inherit -p /deployments/test/clusters/cluster2/nodes/node_5/routes/default             -s              /infrastructure/networking/routes/def
+litp inherit -p /deployments/test/clusters/cluster2/nodes/node_5/storage_profile            -s              /infrastructure/storage/storage_profiles/profile_1
+litp inherit -p /deployments/test/clusters/cluster2/nodes/node_5/os                         -s              /software/profiles/rhel_6_4
+litp create -p /deployments/test/clusters/cluster2/nodes/node_5/network_interfaces/nic_0  -t eth              -o device_name=eth0 macaddress=08:00:27:5B:C1:32 network_name=mgmt ipaddress=10.10.10.103
+litp create -p /deployments/test/clusters/cluster2/nodes/node_5/network_interfaces/nic_2  -t eth              -o device_name=eth2 macaddress=08:00:27:06:C0:63 network_name=heartbeat1
+litp create -p /deployments/test/clusters/cluster2/nodes/node_5/network_interfaces/nic_3  -t eth              -o device_name=eth3 macaddress=08:00:27:21:7D:B4 network_name=heartbeat2
+
+# 4. Setup Node6
+litp create -p /deployments/test/clusters/cluster2/nodes/node_6                             -t node             -o hostname=mn6
+litp inherit -p /deployments/test/clusters/cluster2/nodes/node_6/system                     -s              /infrastructure/systems/system_6
+litp inherit -p /deployments/test/clusters/cluster2/nodes/node_6/routes/default             -s              /infrastructure/networking/routes/def
+litp inherit -p /deployments/test/clusters/cluster2/nodes/node_6/storage_profile            -s              /infrastructure/storage/storage_profiles/profile_1
+litp inherit -p /deployments/test/clusters/cluster2/nodes/node_6/os                         -s              /software/profiles/rhel_6_4
+litp create -p /deployments/test/clusters/cluster2/nodes/node_6/network_interfaces/nic_0  -t eth              -o device_name=eth0 macaddress=08:00:27:5B:C1:33 network_name=mgmt ipaddress=10.10.10.104
+litp create -p /deployments/test/clusters/cluster2/nodes/node_6/network_interfaces/nic_2  -t eth              -o device_name=eth2 macaddress=08:00:27:06:C0:64 network_name=heartbeat1
+litp create -p /deployments/test/clusters/cluster2/nodes/node_6/network_interfaces/nic_3  -t eth              -o device_name=eth3 macaddress=08:00:27:21:7D:B5 network_name=heartbeat2
+
+# 5. Create failover service group CS1 in cluster1
+litp create -t vcs-clustered-service -p /deployments/test/clusters/cluster1/services/CS1 -o name=cs1 active=1 standby=1 node_list=node_1,node_2
+litp create -t service -p /software/services/service01 -o service_name=service01
+litp inherit -s /software/services/service01 -p /deployments/test/clusters/cluster1/services/CS1/applications/service01
+
+# 6. Create parallel service group CS2 in cluster2
+litp create -t vcs-clustered-service -p /deployments/test/clusters/cluster2/services/CS2 -o name=cs2 active=1 standby=0 node_list=node_5
+litp create -t service -p /software/services/service02 -o service_name=service02
+litp inherit -s /software/services/service02 -p /deployments/test/clusters/cluster2/services/CS2/applications/service02
+
+# 7. Create and run plan
+litp create_plan
+litp run_plan
+
+# 8. Create failover service group CS3 in cluster1 that deactivates CS1 in cluster1
+litp create -t vcs-clustered-service -p /deployments/test/clusters/cluster1/services/CS3 -o name=cs3 active=1 standby=1 node_list=node_3,node_4 deactivates=CS1
+litp inherit -s /software/services/service01 -p /deployments/test/clusters/cluster1/services/CS3/applications/service01
+
+# 9. Create parallel service group CS4 in cluster2 that deactivates CS2 in cluster2
+litp create -t vcs-clustered-service -p /deployments/test/clusters/cluster2/services/CS4 -o name=cs4 active=1 standby=0 node_list=node_6 deactivates=CS2
+litp inherit -s /software/services/service02 -p /deployments/test/clusters/cluster2/services/CS4/applications/service02
+
+# 10. Create and run plan
+litp create_plan
+litp run_plan

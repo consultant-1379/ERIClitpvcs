@@ -1,0 +1,132 @@
+runLitpScript cluster_common.atlib
+
+# Setup Node3 to allow checking of all validation errors
+litp create -p /infrastructure/systems/system_3                           -t system           -o system_name=MN3VM
+litp create -p /deployments/test/clusters/cluster1/nodes/node_3                             -t node             -o hostname=mn3
+litp inherit -p /deployments/test/clusters/cluster1/nodes/node_3/system                     -s              /infrastructure/systems/system_3
+litp inherit -p /deployments/test/clusters/cluster1/nodes/node_3/routes/default             -s              /infrastructure/networking/routes/def
+litp inherit -p /deployments/test/clusters/cluster1/nodes/node_3/storage_profile            -s              /infrastructure/storage/storage_profiles/profile_1
+litp inherit -p /deployments/test/clusters/cluster1/nodes/node_3/os                         -s              /software/profiles/rhel_6_4
+litp create -p /deployments/test/clusters/cluster1/nodes/node_3/network_interfaces/nic_0  -t eth              -o device_name=eth0 macaddress=08:00:27:5B:C1:31 network_name=mgmt ipaddress=10.10.10.103
+litp create -p /deployments/test/clusters/cluster1/nodes/node_3/network_interfaces/nic_2  -t eth              -o device_name=eth2 macaddress=08:00:27:06:C0:62 network_name=heartbeat1
+litp create -p /deployments/test/clusters/cluster1/nodes/node_3/network_interfaces/nic_3  -t eth              -o device_name=eth3 macaddress=08:00:27:21:7D:B3 network_name=heartbeat2
+
+
+# 1. Validate circular dependency
+litp create -t vcs-clustered-service -p /deployments/test/clusters/cluster1/services/cs5 -o name="bar" active=1 standby=1 node_list="node_1,node_2" dependency_list='cs6'
+litp create -t lsb-runtime           -p /deployments/test/clusters/cluster1/services/cs5/runtimes/bar -o service_name=bar
+
+# Add in a vcs-clustered-service which then depends on the one above
+litp create -t vcs-clustered-service -p /deployments/test/clusters/cluster1/services/cs6 -o name="cs" active=1 standby=1 node_list="node_1,node_2" dependency_list='cs5'
+litp create -t lsb-runtime           -p /deployments/test/clusters/cluster1/services/cs6/runtimes/cs -o service_name=cs
+
+assertError --errors_length=1 --err_message='Create plan failed: A circular dependency has been detected between the following clustered-services: "cs5" and "cs6". Check the "dependency_list" property of each clustered-service item to resolve the issue.' --err_vpath='/deployments/test/clusters/cluster1' create_plan
+
+# Remove the circular dependency clustered services
+litp remove -p /deployments/test/clusters/cluster1/services/cs6/runtimes/cs
+litp remove -p /deployments/test/clusters/cluster1/services/cs6
+litp remove -p /deployments/test/clusters/cluster1/services/cs5/runtimes/bar
+litp remove -p /deployments/test/clusters/cluster1/services/cs5
+
+
+# 2. Add in a 6 level dependency (cs9 -> cs8 -> cs7 -> cs3 -> cs2 -> cs1)
+litp create -t vcs-clustered-service -p /deployments/test/clusters/cluster1/services/cs1 -o name="httpd" active=2 standby=0 node_list="node_1,node_2"
+litp create -t lsb-runtime           -p /deployments/test/clusters/cluster1/services/cs1/runtimes/apache -o service_name=httpd
+
+litp create -t vcs-clustered-service -p /deployments/test/clusters/cluster1/services/cs2 -o name="nfs" active=1 standby=1 node_list="node_1,node_2" dependency_list='cs1'
+litp create -t lsb-runtime           -p /deployments/test/clusters/cluster1/services/cs2/runtimes/nfs -o service_name=nfs
+
+litp create -t vcs-clustered-service -p /deployments/test/clusters/cluster1/services/cs3 -o name="ricci" active=1 standby=1 node_list="node_1,node_2" dependency_list='cs1,cs2'
+litp create -t lsb-runtime           -p /deployments/test/clusters/cluster1/services/cs3/runtimes/ricci -o service_name=ricci
+
+litp create -t vcs-clustered-service -p /deployments/test/clusters/cluster1/services/cs7 -o name="cs7" active=1 standby=1 node_list="node_1,node_2" dependency_list='cs3'
+litp create -t lsb-runtime           -p /deployments/test/clusters/cluster1/services/cs7/runtimes/cs7 -o service_name=cs7
+
+litp create -t vcs-clustered-service -p /deployments/test/clusters/cluster1/services/cs8 -o name="cs8" active=1 standby=1 node_list="node_1,node_2" dependency_list='cs7'
+litp create -t lsb-runtime           -p /deployments/test/clusters/cluster1/services/cs8/runtimes/cs8 -o service_name=cs8
+
+litp create -t vcs-clustered-service -p /deployments/test/clusters/cluster1/services/cs9 -o name="cs9" active=1 standby=1 node_list="node_1,node_2" dependency_list='cs8'
+litp create -t lsb-runtime           -p /deployments/test/clusters/cluster1/services/cs9/runtimes/cs9 -o service_name=cs9
+
+assertError --err_message 'Create plan failed: The dependency tree depth for the vcs clustered services for this cluster is "6". The maximum dependency depth supported is "5".' create_plan
+
+# Remove one clustered service
+litp remove -p /deployments/test/clusters/cluster1/services/cs9/runtimes/cs9
+litp remove -p /deployments/test/clusters/cluster1/services/cs9
+
+litp create_plan
+litp run_plan
+
+
+# 3. Try to add a service which has a dependency on itself
+litp create -t vcs-clustered-service -p /deployments/test/clusters/cluster1/services/cs11 -o name="cs11" active=1 standby=1 node_list="node_1,node_2" dependency_list='cs11'
+litp create -t lsb-runtime           -p /deployments/test/clusters/cluster1/services/cs11/runtimes/cs11 -o service_name=cs11
+
+assertError --err_message 'Create plan failed: A service can not depend on itself. Please ensure dependency_list property is correct' create_plan
+
+litp remove -p /deployments/test/clusters/cluster1/services/cs11/runtimes/cs11
+litp remove -p /deployments/test/clusters/cluster1/services/cs11
+
+
+# 4. Attempt to add clustered service with space in dependency_list
+assertError --err_message "Invalid value 'cs1, cs3'." create -t vcs-clustered-service -p /deployments/test/clusters/cluster1/services/cs10 -o name="clus10" active=1 standby=1 node_list="node_1,node_2" dependency_list='cs1, cs3'
+
+
+# 5. Try to add clustered service with clustered service with duplicated dependencies
+assertError --err_message "The following vcs-clustered-services have been specified more than once: cs1." create -t vcs-clustered-service -p /deployments/test/clusters/cluster1/services/cs12 -o name="clus12" active=1 standby=1 node_list="node_1,node_2" dependency_list='cs1,cs1'
+
+
+# 6. Try to add clustered service and create plan with clustered service with non-existant dependency
+litp create -t vcs-clustered-service -p /deployments/test/clusters/cluster1/services/cs11 -o name="clus11" active=1 standby=1 node_list="node_1,node_2" dependency_list='cs1,non_existant'
+litp create -t lsb-runtime           -p /deployments/test/clusters/cluster1/services/cs11/runtimes/cs11 -o service_name=cs11
+
+assertError --err_message "Create plan failed: '/deployments/test/clusters/cluster1/services/non_existant' does not exist. Please ensure dependency_list property is correct" create_plan
+
+litp remove -p /deployments/test/clusters/cluster1/services/cs11/runtimes/cs11
+litp remove -p /deployments/test/clusters/cluster1/services/cs11
+
+
+# 7. Try to add a clustered service which has a dependency with a different node list (both services parallel) and nodes that dependencies are not running on
+litp create -t vcs-clustered-service -p /deployments/test/clusters/cluster1/services/cs12 -o name="clus12" active=1 standby=0 node_list="node_1,node_3" dependency_list='cs1'
+litp create -t lsb-runtime           -p /deployments/test/clusters/cluster1/services/cs12/runtimes/runtime12 -o service_name=runtime12
+
+assertError --err_message 'The node_list for dependency "cs1" does not contain node "node_3" which is part of the node_list for "cs12". This is required if both the service and the dependency are in parallel' create_plan
+
+litp remove -p /deployments/test/clusters/cluster1/services/cs12/runtimes/runtime12
+litp remove -p /deployments/test/clusters/cluster1/services/cs12
+
+
+# 8. Try again with multiple dependencies but each dependency is running on each clustered_service node
+litp create -t vcs-clustered-service -p /deployments/test/clusters/cluster1/services/cs13 -o name="cs13" active=2 standby=0 node_list="node_1,node_2" dependency_list='cs2'
+litp create -t lsb-runtime           -p /deployments/test/clusters/cluster1/services/cs13/runtimes/runtime13 -o service_name=runtime13
+
+litp create -t vcs-clustered-service -p /deployments/test/clusters/cluster1/services/cs14 -o name="cs14" active=1 standby=0 node_list="node_1" dependency_list='cs13,cs2'
+litp create -t lsb-runtime           -p /deployments/test/clusters/cluster1/services/cs14/runtimes/runtime14 -o service_name=runtime14
+
+litp create_plan
+
+# 9. Try to add a dependency on a one node vcs-clustered-service
+litp create -t vcs-clustered-service -p /deployments/test/clusters/cluster1/services/cs15 -o name="cs15" active=1 standby=0 node_list="node_1"
+litp create -t lsb-runtime           -p /deployments/test/clusters/cluster1/services/cs15/runtimes/runtime15 -o service_name=runtime15
+
+litp create -t vcs-clustered-service -p /deployments/test/clusters/cluster1/services/cs16 -o name="cs16" active=1 standby=1 node_list="node_1,node_2" dependency_list='cs15'
+litp create -t lsb-runtime           -p /deployments/test/clusters/cluster1/services/cs16/runtimes/runtime16 -o service_name=runtime14
+
+assertError --err_message 'Create plan failed: The dependency "cs15" is a one node vcs-clustered-service. Only a one node vcs-clustered-service with the same node_list can depend on a one node vcs-clustered-service.' create_plan
+
+litp remove -p /deployments/test/clusters/cluster1/services/cs16/runtimes/runtime16
+litp remove -p /deployments/test/clusters/cluster1/services/cs16
+
+# 10. Add a one node clustered service which depends on a one node clusterd service with same node list
+litp create -t vcs-clustered-service -p /deployments/test/clusters/cluster1/services/cs17 -o name="cs17" active=1 standby=0 node_list="node_1" dependency_list='cs15'
+litp create -t lsb-runtime           -p /deployments/test/clusters/cluster1/services/cs17/runtimes/runtime17 -o service_name=runtime17
+
+litp create_plan
+litp run_plan
+
+# 11. Add a dependency from a parallel vcs-clustered-service on a parallel one node vcs-clustered-service. Ensure only one validation error shows
+litp create -t vcs-clustered-service -p /deployments/test/clusters/cluster1/services/cs18 -o name="cs18" active=2 standby=0 node_list="node_1,node_2" dependency_list='cs15'
+litp create -t lsb-runtime           -p /deployments/test/clusters/cluster1/services/cs18/runtimes/runtime18 -o service_name=runtime18
+
+assertError --err_message 'Create plan failed: The dependency "cs15" is a one node vcs-clustered-service. Only a one node vcs-clustered-service with the same node_list can depend on a one node vcs-clustered-service.' create_plan
+

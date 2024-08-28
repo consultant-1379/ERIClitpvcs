@@ -1,0 +1,23 @@
+# Prerequisite - LITP deployment
+runLitpScript ../cluster_common.atlib
+runLitpScript ../add_2_nodes_to_cluster.atlib
+
+# 1. Create failover service group CS1
+litp create -t vcs-clustered-service -p /deployments/test/clusters/cluster1/services/CS1 -o name=cs1 active=1 standby=1 node_list=node_1,node_2
+litp create -t service -p /software/services/service01 -o service_name=service01
+litp inherit -s /software/services/service01 -p /deployments/test/clusters/cluster1/services/CS1/applications/service01
+
+litp create_plan
+litp run_plan
+
+# 2. Create service group CS1new that deactivates CS1
+litp create -t vcs-clustered-service -p /deployments/test/clusters/cluster1/services/CS1new -o name=cs2new active=1 standby=1 node_list=node_2,node_3 deactivates=CS1
+litp inherit -s /software/services/service01 -p /deployments/test/clusters/cluster1/services/CS1new/applications/service01
+
+# 3. Assert error re existing dependency on service for deactivation
+let __err1 --err_type ValidationError --err_vpath /deployments/test/clusters/cluster1/services/CS1new --err_message 'vcs-clustered-service "CS1new" and the vcs-clustered-service it is to deactivate, "CS1", cannot be installed on the same node. Common nodes are "node_2"'
+assertError __err1 create_plan
+
+litp update -p /deployments/test/clusters/cluster1/services/CS1new -o node_list=node_2,node_1
+let __err2 --err_type ValidationError --err_vpath /deployments/test/clusters/cluster1/services/CS1new --err_message 'vcs-clustered-service "CS1new" and the vcs-clustered-service it is to deactivate, "CS1", cannot be installed on the same node. Common nodes are "node_2, node_1"'
+assertError __err2 create_plan

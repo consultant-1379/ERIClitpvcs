@@ -1,0 +1,29 @@
+runLitpScript cluster_common.atlib
+
+litp create -p /infrastructure/networking/networks/mgmt-1  -t network          -o name=mgmt-1 litp_management=true subnet=10.10.12.0/24
+litp create -p /infrastructure/networking/networks/mgmt_1  -t network          -o name=mgmt_1 litp_management=true subnet=10.10.13.0/24
+litp create -p /infrastructure/networking/networks/mgmt1   -t network          -o name=mgmt.1 litp_management=true subnet=10.10.14.0/24
+
+litp create -p /deployments/test/clusters/cluster1/nodes/node_1/network_interfaces/nic_4  -t eth              -o device_name=eth0 macaddress=08:00:27:5B:C1:3F network_name=mgmt-1 ipaddress=10.10.12.101
+litp create -p /deployments/test/clusters/cluster1/nodes/node_1/network_interfaces/nic_5  -t eth              -o device_name=eth1 macaddress=08:00:27:5B:C1:3F network_name=mgmt_1 ipaddress=10.10.13.101
+litp create -p /deployments/test/clusters/cluster1/nodes/node_1/network_interfaces/nic_6  -t eth              -o device_name=eth1 macaddress=08:00:27:5B:C1:3F network_name=mgmt.1  ipaddress=10.10.14.101
+litp create -p /deployments/test/clusters/cluster1/nodes/node_2/network_interfaces/nic_4  -t eth              -o device_name=eth0 macaddress=08:00:27:5B:C1:3F network_name=mgmt-1 ipaddress=10.10.12.101
+litp create -p /deployments/test/clusters/cluster1/nodes/node_2/network_interfaces/nic_5  -t eth              -o device_name=eth1 macaddress=08:00:27:5B:C1:3F network_name=mgmt_1 ipaddress=10.10.13.101
+litp create -p /deployments/test/clusters/cluster1/nodes/node_2/network_interfaces/nic_6  -t eth              -o device_name=eth1 macaddress=08:00:27:5B:C1:3F network_name=mgmt.1  ipaddress=10.10.14.101
+
+# vcs create two ipaddress similar name
+litp create -p /deployments/test/clusters/cluster1/services/cs1 -t vcs-clustered-service -o active=1 standby=0 name='cs1' online_timeout=180 dependency_list="" node_list='node_1'
+litp create -t service -p /software/services/service1 -o service_name=test
+litp inherit -p /deployments/test/clusters/cluster1/services/cs1/applications/service1 -s /software/services/service1
+litp create -p /deployments/test/clusters/cluster1/services/cs1/ipaddresses/ip1 -t vip -o network_name='mgmt-1' ipaddress='10.10.12.156'
+litp create -p /deployments/test/clusters/cluster1/services/cs1/ipaddresses/ip2 -t vip -o network_name='mgmt_1' ipaddress='10.10.13.155'
+litp create -p /deployments/test/clusters/cluster1/services/cs1/ipaddresses/ip3 -t vip -o network_name='mgmt.1' ipaddress='10.10.14.154'
+
+
+let __err_name_1 --err_message 'Create plan failed: The "network_name" "mgmt-1" is incompatible with the "network_name" "mgmt_1 (/deployments/test/clusters/cluster1/services/cs1/ipaddresses/ip2)", "mgmt.1 (/deployments/test/clusters/cluster1/services/cs1/ipaddresses/ip3)" because "-", "_" and "." are interchangeable in this property.' --err_type ValidationError  --err_vpath '/deployments/test/clusters/cluster1/services/cs1/ipaddresses/ip1'
+
+let __err_name_2 --err_message 'Create plan failed: The "network_name" "mgmt_1" is incompatible with the "network_name" "mgmt.1 (/deployments/test/clusters/cluster1/services/cs1/ipaddresses/ip3)", "mgmt-1 (/deployments/test/clusters/cluster1/services/cs1/ipaddresses/ip1)" because "-", "_" and "." are interchangeable in this property.' --err_type ValidationError  --err_vpath '/deployments/test/clusters/cluster1/services/cs1/ipaddresses/ip2'
+
+let __err_name_3 --err_message 'Create plan failed: The "network_name" "mgmt.1" is incompatible with the "network_name" "mgmt_1 (/deployments/test/clusters/cluster1/services/cs1/ipaddresses/ip2)", "mgmt-1 (/deployments/test/clusters/cluster1/services/cs1/ipaddresses/ip1)" because "-", "_" and "." are interchangeable in this property.' --err_type ValidationError  --err_vpath '/deployments/test/clusters/cluster1/services/cs1/ipaddresses/ip3'
+
+assertError __err_name_1 __err_name_2 __err_name_3 create_plan

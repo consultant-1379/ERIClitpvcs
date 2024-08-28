@@ -1,0 +1,28 @@
+runLitpScript ../cluster_common.atlib
+
+# Create model items for storage profiles
+litp create -t storage-profile -p /infrastructure/storage/storage_profiles/vx_sp -o volume_driver='vxvm'
+litp create -t volume-group    -p /infrastructure/storage/storage_profiles/vx_sp/volume_groups/vxvg1 -o volume_group_name='vx_dg'
+litp create -t file-system    -p /infrastructure/storage/storage_profiles/vx_sp/volume_groups/vxvg1/file_systems/versant_fs -o mount_point='/opt/ericsson/nms/versant' type="vxfs" size=100G snap_size=0
+litp create -t physical-device -p /infrastructure/storage/storage_profiles/vx_sp/volume_groups/vxvg1/physical_devices/lun0 -o device_name='lun0'
+litp inherit -p /deployments/test/clusters/cluster1/storage_profile/vx_sp -s /infrastructure/storage/storage_profiles/vx_sp
+
+# Create second Storage profile with same mount point
+litp create -t storage-profile -p /infrastructure/storage/storage_profiles/vx_sp2 -o volume_driver='vxvm'
+litp create -t volume-group    -p /infrastructure/storage/storage_profiles/vx_sp2/volume_groups/vxvg2 -o volume_group_name='vx_dg'
+litp create -t file-system    -p /infrastructure/storage/storage_profiles/vx_sp2/volume_groups/vxvg2/file_systems/versant_fs -o mount_point='/opt/ericsson/nms/versant' type="vxfs" size=100G snap_size=0
+litp create -t physical-device -p /infrastructure/storage/storage_profiles/vx_sp2/volume_groups/vxvg2/physical_devices/lun0 -o device_name='lun1'
+litp inherit -p /deployments/test/clusters/cluster1/storage_profile/vx_sp2 -s /infrastructure/storage/storage_profiles/vx_sp2
+
+# Create vcs clustered service and inherit the two filesystems
+litp create -t vcs-clustered-service -p /deployments/test/clusters/cluster1/services/cs1 -o name="versant_listener" active=1 standby=1 node_list="node_1,node_2"
+litp create -t service -p /software/services/versant -o service_name=versantd
+litp inherit -p /deployments/test/clusters/cluster1/services/cs1/applications/versant -s /software/services/versant
+litp inherit -p /deployments/test/clusters/cluster1/services/cs1/filesystems/versant_mount -s /deployments/test/clusters/cluster1/storage_profile/vx_sp/volume_groups/vxvg1/file_systems/versant_fs
+litp inherit -p /deployments/test/clusters/cluster1/services/cs1/filesystems/versant_mount_too -s /deployments/test/clusters/cluster1/storage_profile/vx_sp2/volume_groups/vxvg2/file_systems/versant_fs
+
+# There should be a validation error if we try to use the same mount point
+let __err1 --err_message 'File-system mount_point "/opt/ericsson/nms/versant" is not unique on nodes: "mn1, mn2"' --err_vpath=/deployments/test/clusters/cluster1/services/cs1/filesystems/versant_mount
+let __err2 --err_message 'File-system mount_point "/opt/ericsson/nms/versant" is not unique on nodes: "mn1, mn2"' --err_vpath=/deployments/test/clusters/cluster1/services/cs1/filesystems/versant_mount_too
+
+assertError __err1 __err2 --errors_length 2 create_plan 

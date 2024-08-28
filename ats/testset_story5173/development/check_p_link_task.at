@@ -1,0 +1,37 @@
+runLitpScript ../../cluster_common.atlib
+
+# Create FO service
+litp create -t service -p /software/services/mockFO -o service_name='mockFO'
+litp create -t vcs-clustered-service -p /deployments/test/clusters/cluster1/services/cs1/ -o name="cs1" standby=1 active=1 node_list="node_1,node_2"
+litp inherit -s /software/services/mockFO -p /deployments/test/clusters/cluster1/services/cs1/applications/mock
+litp create -t vip -p /deployments/test/clusters/cluster1/services/cs1/ipaddresses/ip1 -o network_name='mgmt' ipaddress='10.10.10.155'
+
+litp create_plan
+litp run_plan
+
+# Create a new VIP
+litp create -t vip -p /deployments/test/clusters/cluster1/services/cs1/ipaddresses/ip2 -o network_name='mgmt' ipaddress='10.10.10.158'
+litp create_plan
+
+# Check that we have the tasks to:
+# 1. Create the vip
+# 2. Ensure sg online
+# 3. Link the ip to the application
+assertCallbackTask callback_method /deployments/test/clusters/cluster1/services/cs1/ipaddresses/ip2 callback_func=vip_callback callback_class=NetworkResourceHelper
+assertCallbackTask callback_method /deployments/test/clusters/cluster1/services/cs1/ipaddresses/ip2 callback_func=online_callback callback_class=VcsSGOnlineHelper
+assertCallbackTask callback_method /deployments/test/clusters/cluster1/services/cs1/ipaddresses/ip2 callback_func=cb_link_vips_to_app callback_class=ApplicationResource
+
+# Force a node lock/unlock
+litp create -t package -p /software/items/vim -o name=vim
+litp inherit -s /software/items/vim -p /deployments/test/clusters/cluster1/nodes/node_1/items/vim
+litp inherit -s /software/items/vim -p /deployments/test/clusters/cluster1/nodes/node_2/items/vim
+litp create_plan
+
+let __create_vip CallbackTask callback_method /deployments/test/clusters/cluster1/services/cs1/ipaddresses/ip2 callback_func=vip_callback callback_class=NetworkResourceHelper
+let __link_vips CallbackTask callback_method /deployments/test/clusters/cluster1/services/cs1/ipaddresses/ip2 callback_func=cb_link_vips_to_app callback_class=ApplicationResource
+let __online_sg CallbackTask callback_method /deployments/test/clusters/cluster1/services/cs1/ipaddresses/ip2 callback_func=online_callback callback_class=VcsSGOnlineHelper
+let __lock1 CallbackTask lock_node /deployments/test/clusters/cluster1/nodes/node_1
+let __lock2 CallbackTask lock_node /deployments/test/clusters/cluster1/nodes/node_2
+
+assertTaskBeforeTask __create_vip __link_vips __online_sg __lock1
+assertTaskBeforeTask __create_vip __link_vips __online_sg __lock2

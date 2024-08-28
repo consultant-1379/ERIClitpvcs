@@ -1,0 +1,20 @@
+# Prerequisite - LITP deployment
+runLitpScript ../cluster_common.atlib
+runLitpScript ../add_2_nodes_to_cluster.atlib
+
+# 2. Create service group CS2 that deactivates CS1 which does not exist
+
+assertNone /deployments/test/clusters/cluster1/services/CS1
+
+litp create -t vcs-clustered-service -p /deployments/test/clusters/cluster1/services/CS2 -o name=cs2 active=1 standby=1 node_list=node_3,node_4 deactivates=CS1
+litp create -t service -p /software/services/service01 -o service_name=service01
+litp inherit -s /software/services/service01 -p /deployments/test/clusters/cluster1/services/CS2/applications/service01
+litp create -t vip -p /deployments/test/clusters/cluster1/services/CS2/ipaddresses/ip1 -o network_name=mgmt ipaddress=10.10.10.156
+litp create -t vip -p /deployments/test/clusters/cluster1/services/CS2/ipaddresses/ip2 -o network_name=mgmt ipaddress=10.10.10.157
+
+litp create_plan
+litp run_plan
+
+assertCallbackTask callback_method /deployments/test/clusters/cluster1/services/CS2 callback_func=install_callback callback_class=VcsServiceGroupHelper
+assertNoCallbackTask callback_method /deployments/test/clusters/cluster1/services/CS1
+

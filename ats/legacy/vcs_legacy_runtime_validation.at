@@ -1,0 +1,12 @@
+runLitpScript ../cluster_common.atlib
+
+litp create -t vcs-clustered-service -p /deployments/test/clusters/cluster1/services/cs1 -o name="httpd" active=1 standby=1 node_list="node_1,node_2" 
+litp create -t lsb-runtime           -p /deployments/test/clusters/cluster1/services/cs1/runtimes/apache -o service_name=httpd
+litp create -t lsb-runtime           -p /deployments/test/clusters/cluster1/services/cs1/runtimes/apache1 -o service_name=httpd1
+
+
+
+assertError --err_message "Create plan failed: Number of lsb-runtimes per vcs-clustered-service must be 1" create_plan
+
+
+

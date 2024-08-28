@@ -1,0 +1,16 @@
+runLitpScript cluster_common.atlib
+
+# Create a vcs clustered service.
+litp create -t vcs-clustered-service -p /deployments/test/clusters/cluster1/services/cs1 -o active=1 standby=1 name="cs1" node_list="node_1,node_2"
+litp create -t lsb-runtime -p /deployments/test/clusters/cluster1/services/cs1/runtimes/runtime1 -o service_name='foobar'
+
+# Add a package and inherit it on the runtime.
+litp create -t package -p /software/items/pkg1 -o name=foobar version=0.0.1-1
+litp inherit -p /deployments/test/clusters/cluster1/services/cs1/runtimes/runtime1/packages/foobar -s /software/items/pkg1
+
+# Update the inherited package.
+litp update -p /deployments/test/clusters/cluster1/services/cs1/runtimes/runtime1/packages/foobar -o version=0.0.2-1
+
+litp create_plan
+
+assertConfigTask mn1 package foobar /deployments/test/clusters/cluster1/services/cs1/runtimes/runtime1/packages/foobar require='[]' ensure='0.0.2-1'

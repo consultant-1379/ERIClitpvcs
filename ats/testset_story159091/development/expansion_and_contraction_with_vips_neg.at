@@ -1,0 +1,22 @@
+# An AT to prove that VIPS are not supported in a cluster expansion and contraction
+
+runLitpScript ../../cluster_common.atlib
+runLitpScript ../../add_4_nodes_to_cluster.atlib
+
+
+# Create the vcs-cluster-service
+litp create -t service -p /software/services/mock -o service_name='mocklsb'
+litp create -t vcs-clustered-service -p /deployments/test/clusters/cluster1/services/cs1 -o name="cs1" standby=0 active=3 node_list="node_1,node_2,node_3" dependency_list=""
+litp inherit -s /software/services/mock -p /deployments/test/clusters/cluster1/services/cs1/applications/mock
+litp create -p /deployments/test/clusters/cluster1/services/cs1/ipaddresses/ip1 -t vip -o network_name='mgmt' ipaddress=10.10.10.155
+litp create -p /deployments/test/clusters/cluster1/services/cs1/ipaddresses/ip2 -t vip -o network_name='mgmt' ipaddress=10.10.10.156
+litp create -p /deployments/test/clusters/cluster1/services/cs1/ipaddresses/ip3 -t vip -o network_name='mgmt' ipaddress=10.10.10.157
+
+litp create_plan
+litp run_plan
+
+litp update -p /deployments/test/clusters/cluster1/services/cs1/ -o node_list="node_3,node_4,node_5"
+
+assertError --err_message "Create plan failed: Removal of nodes from node_list of service containing VIPs is not supported." --err_vpath /deployments/test/clusters/cluster1/services/cs1 --errors_length 1 create_plan
+
+

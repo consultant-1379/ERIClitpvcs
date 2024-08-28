@@ -1,0 +1,31 @@
+# Test Case 08.
+
+# Test to verify that LITP plan will fail to create when the same FS is used in two different CS
+
+# Prerequisite - LITP Deployment
+runLitpScript ../cluster_common.atlib
+
+# Create model items for storage profiles
+litp create -t storage-profile -p /infrastructure/storage/storage_profiles/vx_sp -o volume_driver='vxvm'
+litp create -t volume-group    -p /infrastructure/storage/storage_profiles/vx_sp/volume_groups/vxvg1 -o volume_group_name='vx_dg'
+litp create -t file-system    -p /infrastructure/storage/storage_profiles/vx_sp/volume_groups/vxvg1/file_systems/versant_fs -o mount_point='/opt/ericsson/nms/versant' type="vxfs" size=100G snap_size=0
+litp create -t physical-device -p /infrastructure/storage/storage_profiles/vx_sp/volume_groups/vxvg1/physical_devices/lun0 -o device_name='lun0'
+litp inherit -p /deployments/test/clusters/cluster1/storage_profile/vx_sp -s /infrastructure/storage/storage_profiles/vx_sp
+
+# Create two vcs clustered services with corresponding services attached
+litp create -t vcs-clustered-service -p /deployments/test/clusters/cluster1/services/cs1 -o name="versant_listener" active=1 standby=1 node_list="node_1,node_2"
+litp create -t service -p /software/services/versant -o service_name=versantd
+litp inherit -p /deployments/test/clusters/cluster1/services/cs1/applications/versant -s /software/services/versant
+litp inherit -p /deployments/test/clusters/cluster1/services/cs1/filesystems/versant_mount -s /deployments/test/clusters/cluster1/storage_profile/vx_sp/volume_groups/vxvg1/file_systems/versant_fs
+
+litp create -t vcs-clustered-service -p /deployments/test/clusters/cluster1/services/cs2 -o name="versanttoo_listener" active=1 standby=1 node_list="node_1,node_2"
+litp create -t service -p /software/services/versanttoo -o service_name=versantdtoo
+litp inherit -p /deployments/test/clusters/cluster1/services/cs1/applications/versanttoo -s /software/services/versanttoo
+litp inherit -p /deployments/test/clusters/cluster1/services/cs2/filesystems/versant_mount -s /deployments/test/clusters/cluster1/storage_profile/vx_sp/volume_groups/vxvg1/file_systems/versant_fs
+
+# Validation should fail if we try to inherit the filesystem under two services
+let __err --err_message 'Create plan failed: VxVM file systems must not be referenced by more than one vcs-clustered-service' --err_vpath /deployments/test/clusters/cluster1/services/cs1 --err_type ValidationError
+let __errtoo --err_message 'Create plan failed: VxVM file systems must not be referenced by more than one vcs-clustered-service' --err_vpath /deployments/test/clusters/cluster1/services/cs2 --err_type ValidationError
+
+assertError __err create_plan
+assertError __errtoo create_plan

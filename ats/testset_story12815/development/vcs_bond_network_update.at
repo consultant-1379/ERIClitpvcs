@@ -1,0 +1,17 @@
+runLitpScript ../../cluster_common.atlib
+
+litp create -t eth -p /deployments/test/clusters/cluster1/nodes/node_1/network_interfaces/nic_1 -o device_name=eth1 macaddress=08:00:27:21:7D:DC master=bond0
+litp update -p /deployments/test/clusters/cluster1/nodes/node_1/network_interfaces/nic_0 -o macaddress=08:00:27:21:7D:DC master=bond0 -d network_name ipaddress
+
+litp create -t bond -p /deployments/test/clusters/cluster1/nodes/node_1/network_interfaces/b0 -o device_name=bond0 ipaddress=10.10.10.101 network_name=mgmt mode=1 miimon=100
+
+litp create_plan
+litp run_plan
+
+
+litp update -p /deployments/test/clusters/cluster1/nodes/node_1/network_interfaces/nic_0 -o macaddress=08:00:27:21:7D:DD
+litp update -p /deployments/test/clusters/cluster1/nodes/node_1/network_interfaces/nic_1 -o macaddress=08:00:27:21:7D:DF
+assertState -p /deployments/test/clusters/cluster1/nodes/node_1/network_interfaces/nic_0 Updated
+assertState -p /deployments/test/clusters/cluster1/nodes/node_1/network_interfaces/nic_1 Updated
+let __no_tasks_error --err_type DoNothingPlanError --err_msg Create plan failed: no tasks were generated
+assertError __no_tasks_error create_plan

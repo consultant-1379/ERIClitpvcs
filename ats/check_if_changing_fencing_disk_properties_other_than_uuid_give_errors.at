@@ -1,0 +1,42 @@
+##############
+# This AT is for development testing
+#
+# Goal: check if we get errors when trying to change Fencing Disk properties other than
+#       UUID, namely: Name and Size
+#
+# Scenario:
+#       Inherited from cluster_common.atlib and create 3 Fencing Disks
+#
+
+####
+# Bulding the scenario
+#
+assertNoPlan
+runLitpScript cluster_common.atlib
+
+#
+# Create Fencing Disks
+#
+litp create -p /deployments/test/clusters/cluster1/fencing_disks/fd1 -t disk -o uuid=1abcdef size=100M name=fencing_disk_1
+litp create -p /deployments/test/clusters/cluster1/fencing_disks/fd2 -t disk -o uuid=2abcdef size=100M name=fencing_disk_2
+litp create -p /deployments/test/clusters/cluster1/fencing_disks/fd3 -t disk -o uuid=3abcdef size=100M name=fencing_disk_3
+
+litp create_plan
+litp run_plan
+
+assertPlanState successful
+
+#####
+# Test we face errors trying changing Size and Name properties
+#
+let __err_do_no_tasks_created --err_type DoNothingPlanError --err_message "no tasks were generated"
+let __err_create_plan_fails __err_validation --err_message 'Create plan failed: Fencing disk: "fencing_disk_1" Only the UUID and storage_container of the Fencing disk can be updated when it is in an "Applied" state'
+
+# Change Size
+litp update -p /deployments/test/clusters/cluster1/fencing_disks/fd1 -o size=999M uuid=test
+assertState -p /deployments/test/clusters/cluster1/fencing_disks/fd1 Updated
+assertError __err_create_plan_fails create_plan
+
+# Reset Size
+litp update -p /deployments/test/clusters/cluster1/fencing_disks/fd1 -o size=100M uuid=1abcdef
+assertState -p /deployments/test/clusters/cluster1/fencing_disks/fd1 Applied

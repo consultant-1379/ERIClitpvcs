@@ -1,0 +1,16 @@
+runLitpScript cluster_common.atlib
+
+litp create -t disk -p /deployments/test/clusters/cluster1/fencing_disks/fd1 -o uuid=30000000fc85c928 size=100M name=fencing_disk_1
+litp create -t disk -p /deployments/test/clusters/cluster1/fencing_disks/fd2 -o uuid=30000000ef27515f size=100M name=fencing_disk_2
+litp create -t disk -p /deployments/test/clusters/cluster1/fencing_disks/fd3 -o uuid=30000000dbc0f9c6 size=100M name=fencing_disk_3
+
+litp create_plan
+litp run_plan
+
+litp create -t vcs-clustered-service -p /deployments/test/clusters/cluster1/services/cs1 -o name="httpd" active=2 standby=0 node_list="node_1,node_2"
+litp create -t lsb-runtime           -p /deployments/test/clusters/cluster1/services/cs1/runtimes/apache -o service_name=httpd
+litp create -p /deployments/test/clusters/cluster1/services/cs1/runtimes/apache/ipaddresses/ip1 -t vip -o network_name='mgmt' ipaddress='10.10.10.155'
+litp create -p /deployments/test/clusters/cluster1/services/cs1/runtimes/apache/ipaddresses/ip2 -t vip -o network_name='mgmt' ipaddress='10.10.10.156'
+
+litp create_plan
+litp run_plan

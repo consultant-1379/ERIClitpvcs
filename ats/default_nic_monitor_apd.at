@@ -1,0 +1,31 @@
+# AT for bug LITPCDS-13720
+# Create an initial plan and run it, default_nic_monitor is set to netstat
+# Update the default nic monitor to mii, but fail the plan at the run stage
+# Reset the default nic monitor to netstat and rerun the plam
+# All reconfigure tasks should be generated
+
+runLitpScript cluster_common.atlib
+
+
+litp create -p /infrastructure/networking/networks/skynet -t network -o name=skynet subnet=100.100.100.0/24
+litp create -p /deployments/test/clusters/cluster1/nodes/node_1/network_interfaces/nic_4  -t eth -o device_name=eth4 macaddress=08:00:27:21:7D:B2 network_name=skynet ipaddress=100.100.100.101
+litp create -p /deployments/test/clusters/cluster1/nodes/node_2/network_interfaces/nic_4  -t eth -o device_name=eth4 macaddress=08:00:27:21:7D:B1 network_name=skynet ipaddress=100.100.100.100
+
+litp create_plan
+litp run_plan
+
+
+litp update -p /deployments/test/clusters/cluster1 -o default_nic_monitor="mii"
+litp create_plan
+failCallbackTask callback_method /deployments/test/clusters/cluster1/nodes/node_2/network_interfaces/nic_4
+litp run_plan
+assertAppliedPropertiesDeterminable -p  /deployments/test/clusters/cluster1/nodes/node_2/network_interfaces/nic_4 False
+
+litp update -p /deployments/test/clusters/cluster1 -o default_nic_monitor="netstat"
+litp create_plan
+
+assertCallbackTask callback_method /deployments/test/clusters/cluster1/nodes/node_1/network_interfaces/nic_0 callback_func=update_network_hosts callback_class=VCSNICServiceGroupUpdateHelper resource=Res_NIC_cluster1_eth0 sys=mn1 mii='0'
+assertCallbackTask callback_method /deployments/test/clusters/cluster1/nodes/node_2/network_interfaces/nic_0 callback_func=update_network_hosts callback_class=VCSNICServiceGroupUpdateHelper resource=Res_NIC_cluster1_eth0 sys=mn2  mii='0'
+assertCallbackTask callback_method /deployments/test/clusters/cluster1/nodes/node_1/network_interfaces/nic_4 callback_func=update_network_hosts callback_class=VCSNICServiceGroupUpdateHelper resource=Res_NIC_cluster1_eth4 sys=mn1  mii='0'
+assertCallbackTask callback_method /deployments/test/clusters/cluster1/nodes/node_2/network_interfaces/nic_4 callback_func=update_network_hosts callback_class=VCSNICServiceGroupUpdateHelper resource=Res_NIC_cluster1_eth4 sys=mn2  mii='0'
+litp run_plan

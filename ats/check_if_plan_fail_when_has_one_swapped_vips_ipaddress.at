@@ -1,0 +1,40 @@
+##############
+# This AT is for development testing
+#
+# Goal: check if fail to create a plan when swapping
+#       an existing VIP ipaddress from one VIP to
+#       another in the same vcs_clustered_service.
+#
+# Scenario:
+#       Inherited from cluster_common_with_vips.atlib
+#
+# Actions:
+#       Update VIPs ipaddresses swapping existing one
+#       in the same vcs_clustered_service 'PL_cups'
+
+####
+# Bulding the scenario
+#
+assertNoPlan
+runLitpScript cluster_common_with_vips.atlib
+litp create_plan
+litp run_plan
+
+####
+# Check built scenario
+#
+assertPlanState successful
+assertState -p /deployments/d1/clusters/c1 Applied
+
+####
+# Actions
+#
+litp update -p /deployments/d1/clusters/c1/services/PL_cups/ipaddresses/PL_cups_vip_3 -o ipaddress=1001::0:11/11
+litp update -p /deployments/d1/clusters/c1/services/PL_cups/ipaddresses/PL_cups_vip_4 -o ipaddress=1001::1:F0/11
+
+#####
+# Create Plan
+#
+let __err_swap --err_type ValidationError  --err_vpath '/deployments/d1/clusters/c1/services/PL_cups/ipaddresses/PL_cups_vip_3' --err_message 'Swap of VIP addresses within the same service is not allowed. VIP "/deployments/d1/clusters/c1/services/PL_cups/ipaddresses/PL_cups_vip_3" ipaddress "1001::0:11/11" was used by VIP "/deployments/d1/clusters/c1/services/PL_cups/ipaddresses/PL_cups_vip_4"'
+
+assertError __err_swap create_plan

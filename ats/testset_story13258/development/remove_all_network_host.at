@@ -1,0 +1,25 @@
+runLitpScript ../../cluster_common.atlib
+litp create_plan
+litp run_plan
+
+litp update -p /deployments/test/clusters/cluster1 -o default_nic_monitor="mii"
+litp create -t vcs-network-host -p /deployments/test/clusters/cluster1/network_hosts/net1 -o network_name="mgmt" ip="100.100.100.102"
+litp create -t vcs-network-host -p /deployments/test/clusters/cluster1/network_hosts/net2 -o network_name="mgmt" ip="100.100.100.103"
+litp create -t vcs-network-host -p /deployments/test/clusters/cluster1/network_hosts/net3 -o network_name="mgmt" ip="100.100.100.104"
+
+litp create_plan
+litp run_plan
+#Ensure the NIC Res0 has an ipaddress now
+assertCallbackTask callback_method /deployments/test/clusters/cluster1/nodes/node_1/network_interfaces/nic_0 callback_func=update_network_hosts callback_class=VCSNICServiceGroupUpdateHelper resource=Res_NIC_cluster1_eth0 sys=mn1 addresses='["100.100.100.102","100.100.100.103","100.100.100.104"]' mii='0'
+assertCallbackTask callback_method /deployments/test/clusters/cluster1/nodes/node_2/network_interfaces/nic_0 callback_func=update_network_hosts callback_class=VCSNICServiceGroupUpdateHelper resource=Res_NIC_cluster1_eth0 sys=mn2 addresses='["100.100.100.102","100.100.100.103","100.100.100.104"]' mii='0'
+
+#Remove all network hosts now
+litp remove -p /deployments/test/clusters/cluster1/network_hosts/net1
+litp remove -p /deployments/test/clusters/cluster1/network_hosts/net2
+litp remove -p /deployments/test/clusters/cluster1/network_hosts/net3
+
+litp create_plan
+assertCallbackTask callback_method /deployments/test/clusters/cluster1/nodes/node_1/network_interfaces/nic_0 callback_func=update_network_hosts callback_class=VCSNICServiceGroupUpdateHelper resource=Res_NIC_cluster1_eth0 sys=mn1 addresses='[]' mii='1'
+assertCallbackTask callback_method /deployments/test/clusters/cluster1/nodes/node_2/network_interfaces/nic_0 callback_func=update_network_hosts callback_class=VCSNICServiceGroupUpdateHelper resource=Res_NIC_cluster1_eth0 sys=mn2 addresses='[]'  mii='1'
+
+litp run_plan

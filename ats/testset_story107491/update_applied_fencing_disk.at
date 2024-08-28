@@ -1,0 +1,27 @@
+runLitpScript ../cluster_common.atlib
+
+litp create -t disk -p /deployments/test/clusters/cluster1/fencing_disks/fd1 -o uuid=30000000fc85c928 size=150M name=fencing_disk_1
+litp create -t disk -p /deployments/test/clusters/cluster1/fencing_disks/fd2 -o uuid=30000000ef27515f size=100M name=fencing_disk_2
+litp create -t disk -p /deployments/test/clusters/cluster1/fencing_disks/fd3 -o uuid=30000000dbc0f9c6 size=100M name=fencing_disk_3
+
+assertState -p /deployments/test/clusters/cluster1/fencing_disks/fd1 Initial
+litp update -p /deployments/test/clusters/cluster1/fencing_disks/fd1 -o size=100M
+assertState -p /deployments/test/clusters/cluster1/fencing_disks/fd1 Initial
+
+litp create_plan
+litp run_plan
+
+assertState -p /deployments/test/clusters/cluster1/fencing_disks/fd1 Applied
+
+litp update -p /deployments/test/clusters/cluster1/fencing_disks/fd1 -o size=200M
+
+assertState -p /deployments/test/clusters/cluster1/fencing_disks/fd1 Updated
+
+assertError --err_message 'Fencing disk: "fencing_disk_1" Only the UUID and storage_container of the Fencing disk can be updated when it is in an "Applied" state' --errors_length 1 --err_vpath /deployments/test/clusters/cluster1/fencing_disks/fd1 create_plan
+
+# Update it back to previously Applied value
+litp update -p /deployments/test/clusters/cluster1/fencing_disks/fd1 -o size=100M
+
+assertState -p /deployments/test/clusters/cluster1/fencing_disks/fd1 Applied
+
+assertError --err_message 'Create plan failed: no tasks were generated' create_plan

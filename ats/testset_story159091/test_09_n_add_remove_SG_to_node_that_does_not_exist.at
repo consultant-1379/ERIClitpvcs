@@ -1,0 +1,23 @@
+# Add and remove nodes to SG when node does not exist in the cluster
+
+runLitpScript ../testset_common/three_nodes_common.atlib
+
+litp create -t service -p /software/services/mock1 -o service_name='mocklsb1'
+litp create -t vcs-clustered-service -p /deployments/test/clusters/cluster1/services/cs1/ -o name="cs1" standby=0 active=2 node_list="node_1,node_2"
+litp inherit -s /software/services/mock1 -p /deployments/test/clusters/cluster1/services/cs1/applications/mock
+
+litp create_plan
+litp run_plan
+
+# Failure will occur due to environment not being configured with additional nodes.
+# Plan can be created correctly when all nodes exist.
+
+litp update -p /deployments/test/clusters/cluster1/services/cs1/ -o node_list="node_1,node_f"
+
+let __err_plan --err_message 'Create plan failed: Node "/deployments/test/clusters/cluster1/nodes/node_f" does not exist. Ensure node_list property is correct' --err_type ValidationError  --err_vpath '/deployments/test/clusters/cluster1/services/cs1'
+assertError __err_plan create_plan
+
+litp update -p /deployments/test/clusters/cluster1/services/cs1/ -o node_list="node_1,node_3"
+
+litp create_plan
+litp run_plan

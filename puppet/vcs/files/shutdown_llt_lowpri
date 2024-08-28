@@ -1,0 +1,55 @@
+#!/bin/sh
+#
+# shutdown_llt_lowpri
+#
+# chkconfig:   345 1 74
+# description: localshutdown script for removing VCS lowpri before shutdown
+#
+
+### BEGIN INIT INFO
+# Provides:
+# Required-Start:
+# Required-Stop:
+# Should-Start:
+# Should-Stop:
+# Default-Start:
+# Default-Stop: 0 6
+# Short-Description:
+# Description:
+### END INIT INFO
+
+interface_name=($(/sbin/lltstat -l | grep lowpri | awk '{print $3}'))
+
+# Source function library.
+
+start() {
+    /bin/touch /var/lock/subsys/shutdown_llt_lowpri
+}
+
+function remove_lowpri_interface() {
+    interface=$1
+    if [[ -d /sys/class/net/${interface}/bridge ]] ; then
+        /bin/logger "Disable llt interface:" $interface
+        /sbin/lltconfig -L disable -t $interface
+        /sbin/lltconfig -u $interface
+    fi
+}
+
+stop() {
+    for interface in ${interface_name[@]} ; do
+        remove_lowpri_interface ${interface}
+    done
+}
+
+case "$1" in
+    start)
+        start
+        ;;
+    stop)
+        stop
+        ;;
+    *)
+        echo $"Usage: $0 {start|stop}"
+        exit 2
+esac
+exit $?

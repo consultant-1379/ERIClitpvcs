@@ -1,0 +1,42 @@
+######################################################
+# LITPCDS-5168:
+#     test_02_p_verify_cs_contraction_apps_can_be_reused
+# Description:
+#     Test to validate when a two node parallel clustered service is
+#     contracted that has an inherited service, and subsequently in a new
+#     plan add an additional clustered service which inherits the same
+#     service, there should not be an error
+# Steps:
+#     Create one, two node parallel VCS CSs
+#     Create/ Run plan
+#     Contract the parallel VCS CS to be a one node parallel CS
+#     Create new one node parallel VCS CS
+#     Create /Run plan again
+#     Assert no errors are returned
+# Result:
+#     Contracted apps can be re-used
+######################################################
+runLitpScript ../cluster_common.atlib
+
+# Step 1: Create a clustered service group with ha-service config properties
+litp create -t service -p /software/services/mock1 -o service_name='mocklsb1'
+litp create -t vcs-clustered-service -p /deployments/test/clusters/cluster1/services/CS_5168_1/ -o name="cs1" standby=0 active=2 node_list="node_1,node_2"
+litp inherit -s /software/services/mock1 -p /deployments/test/clusters/cluster1/services/CS_5168_1/applications/mock1
+litp create -t package -p /software/items/pkg1 -o name=foobar version=0.0.1-1
+litp inherit -p /software/services/mock1/packages/pkg1 -s /software/items/pkg1
+
+# Step 2: Create/ Run plan
+litp create_plan
+litp run_plan
+
+# Step 3: Contract the parallel VCS CS to be a one node parallel CS
+litp update -p /deployments/test/clusters/cluster1/services/CS_5168_1/ -o active=1 standby=0 node_list="node_1"
+
+# Step 4: Create new one node parallel VCS CS
+litp create -t vcs-clustered-service -p /deployments/test/clusters/cluster1/services/CS_5168_2/ -o name="cs2" standby=0 active=1 node_list="node_2"
+litp inherit -p /deployments/test/clusters/cluster1/services/CS_5168_2/applications/APP_5168_2 -s /software/services/mock1
+
+# Step 5: Create/ Run plan again
+# Step 6: Ensure no errors are returned
+litp create_plan
+litp run_plan

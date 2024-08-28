@@ -1,0 +1,20 @@
+runLitpScript ../../cluster_common.atlib
+
+# Create 3 vcs-network-host items in inital plan
+litp create -t vcs-network-host -p /deployments/test/clusters/cluster1/network_hosts/net1 -o network_name="mgmt" ip="192.168.100.1"
+litp create -t vcs-network-host -p /deployments/test/clusters/cluster1/network_hosts/net2 -o network_name="mgmt" ip="192.168.100.2"
+litp create -t vcs-network-host -p /deployments/test/clusters/cluster1/network_hosts/net3 -o network_name="mgmt" ip="2001:ABCD:F0::10"
+
+litp create_plan
+litp run_plan
+
+# Remove an ipv4 and ipv6 network host and replace them
+litp remove -p /deployments/test/clusters/cluster1/network_hosts/net1
+litp remove -p /deployments/test/clusters/cluster1/network_hosts/net3
+
+# Create new vcs-network-host items that use those IPs
+litp create -t vcs-network-host -p /deployments/test/clusters/cluster1/network_hosts/net4 -o network_name="mgmt" ip="192.168.100.1"
+litp create -t vcs-network-host -p /deployments/test/clusters/cluster1/network_hosts/net5 -o network_name="mgmt" ip="2001:abcd:f0::10"
+
+# Check there's no error about duplication raised
+litp create_plan

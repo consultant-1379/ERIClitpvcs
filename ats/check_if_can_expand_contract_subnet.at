@@ -1,0 +1,48 @@
+##############
+# This AT is for development testing
+#
+# Goal: check if we can successfully create a plan
+#       to expand and contract a network
+#
+# Scenario:
+#       Inherited from cluster_common_with_vips.atlib
+#
+# Actions:
+#       Expand network traffic1 to expand from /24 to /23
+#       Update network traffic1 to contract back from /23 to /24
+#
+
+####
+# Bulding the scenario
+#
+assertNoPlan
+runLitpScript cluster_common_with_vips.atlib
+litp create_plan
+litp run_plan
+
+####
+# Check built scenario
+#
+assertPlanState successful
+assertState -p /deployments/d1/clusters/c1 Applied
+
+####
+# Expansion
+#
+litp update -p /infrastructure/networking/networks/traffic1 -o subnet=10.10.0.0/23
+litp create_plan
+litp run_plan
+
+####
+# Contraction
+#
+litp update -p /infrastructure/networking/networks/traffic1 -o subnet=10.10.0.0/24
+litp create_plan
+litp run_plan
+
+#####
+# Post-run Checks
+#
+assertPlanState successful
+assertState -p /deployments/d1/clusters/c1 Applied
+assertCallbackTask callback_method /deployments/d1/clusters/c1/services/FO_samba/ipaddresses/FO_samba_vip_1 callback_func=update_vip_callback cluster_vpath=/deployments/d1/clusters/c1 network_vpath=/infrastructure/networking/networks/traffic1

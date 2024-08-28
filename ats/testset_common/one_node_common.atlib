@@ -1,0 +1,4 @@
+runLitpScript common.atlib
+
+# Delete one node because we are using this atlib in one node configuration
+litp remove -p /deployments/test/clusters/cluster1/nodes/node_2

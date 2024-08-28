@@ -1,0 +1,19 @@
+# AT to check from Failover to Parallel during a clustered-service expansion.
+
+runLitpScript cluster_common.atlib
+
+litp create -t vcs-clustered-service -p /deployments/test/clusters/cluster1/services/cs1 -o name="httpd" active=1 standby=1 node_list="node_1,node_2"
+
+litp create -p /infrastructure/networking/networks/skynet -t network -o name=skynet subnet=100.100.100.0/24
+litp create -t service -p /software/services/service1 -o service_name=service1
+
+litp inherit -p /deployments/test/clusters/cluster1/services/cs1/applications/service1 -s /software/services/service1
+
+litp create_plan
+litp run_plan
+
+litp update -p /deployments/test/clusters/cluster1/services/cs1 -o active=2 standby=1 name="httpd" online_timeout=45 node_list=node_1,node_2,node_3
+
+let __err_nonexistent_node --err_type ValidationError --err_message 'Create plan failed: Node "/deployments/test/clusters/cluster1/nodes/node_3" does not exist.'
+let __err_failover --err_type ValidationError --err_message 'Create plan failed: Must have only 1 active if 1 standby'
+assertError __err_nonexistent_node __err_failover create_plan

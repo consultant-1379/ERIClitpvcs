@@ -1,0 +1,39 @@
+# Prerequisite - LITP deployment
+runLitpScript ../cluster_common.atlib
+runLitpScript ../add_2_nodes_to_cluster.atlib
+
+# 1. Create failover service group CS1
+litp create -t vcs-clustered-service -p /deployments/test/clusters/cluster1/services/CS1 -o name=cs1 active=1 standby=1 node_list=node_1,node_2
+litp create -t service -p /software/services/service01 -o service_name=service01
+litp inherit -s /software/services/service01 -p /deployments/test/clusters/cluster1/services/CS1/applications/service01
+
+# 2. Create failover service groups CS2 and CS3 with initial online dependency on CS1
+litp create -t vcs-clustered-service -p /deployments/test/clusters/cluster1/services/CS2 -o name=cs2 active=1 standby=1 node_list=node_1,node_2 initial_online_dependency_list=CS1
+litp create -t service -p /software/services/service02 -o service_name=service02
+litp inherit -s /software/services/service02 -p /deployments/test/clusters/cluster1/services/CS2/applications/service02
+
+litp create -t vcs-clustered-service -p /deployments/test/clusters/cluster1/services/CS3 -o name=cs3 active=1 standby=1 node_list=node_1,node_2 initial_online_dependency_list=CS1
+litp create -t service -p /software/services/service03 -o service_name=service03
+litp inherit -s /software/services/service03 -p /deployments/test/clusters/cluster1/services/CS3/applications/service03
+
+litp create_plan
+litp run_plan
+
+# 3. Create service group CS1new that deactivates CS1
+litp create -t vcs-clustered-service -p /deployments/test/clusters/cluster1/services/CS1new -o name=cs1new active=1 standby=1 node_list=node_3,node_4 deactivates=CS1
+litp inherit -s /software/services/service01 -p /deployments/test/clusters/cluster1/services/CS1new/applications/service01
+
+# 4. Assert errors re existing initial online dependencies on service for deactivation
+let __err1 --err_type ValidationError --err_vpath /deployments/test/clusters/cluster1/services/CS2 --err_message 'vcs-clustered-service "CS1" being deactivated by vcs-clustered-service "CS1new" cannot be in initial_online_dependency_list.'
+let __err2 --err_type ValidationError --err_vpath /deployments/test/clusters/cluster1/services/CS3 --err_message 'vcs-clustered-service "CS1" being deactivated by vcs-clustered-service "CS1new" cannot be in initial_online_dependency_list.'
+assertError --errors_length 2 __err1 __err2 create_plan
+
+# 5. Remove initial online dependencies on CS1
+litp update --p /deployments/test/clusters/cluster1/services/CS2 -o initial_online_dependency_list=
+litp update --p /deployments/test/clusters/cluster1/services/CS3 -o initial_online_dependency_list=
+litp create_plan
+
+# 6. Add initial online dependencies on CS1new
+litp update --p /deployments/test/clusters/cluster1/services/CS2 -o initial_online_dependency_list=CS1new
+litp update --p /deployments/test/clusters/cluster1/services/CS3 -o initial_online_dependency_list=CS1new
+litp create_plan

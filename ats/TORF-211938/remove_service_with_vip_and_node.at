@@ -1,0 +1,34 @@
+##############
+## This AT is for TORF-211938
+##
+## Goal: Ensure there is no validation error when removing a node and simultaneously
+##       removing a service containing a VIP from that node.
+##
+## Scenario:
+##       Create DB Cluster with 4 nodes using:
+##       - cluster_common.atlib
+##       - add_2_nodes_to_cluster.atlib
+##       Add a service on node1 and node2 containing a VIP
+##       Simultaneously remove service and node2
+##       Ensure plan can be created
+##
+
+runLitpScript ../cluster_common.atlib
+runLitpScript ../add_2_nodes_to_cluster.atlib
+
+litp create -t service -p /software/services/mock -o service_name=mocklsb
+litp create -t vcs-clustered-service -p /deployments/test/clusters/cluster1/services/cs1 -o name="cs1" active=2 standby=0 node_list="node_1,node_2"
+litp inherit -s /software/services/mock -p /deployments/test/clusters/cluster1/services/cs1/applications/mock
+
+litp create -p /deployments/test/clusters/cluster1/services/cs1/ipaddresses/ip1 -t vip -o network_name='mgmt' ipaddress='10.10.10.155'
+litp create -p /deployments/test/clusters/cluster1/services/cs1/ipaddresses/ip2 -t vip -o network_name='mgmt' ipaddress='10.10.10.156'
+
+litp create_plan
+litp run_plan
+
+add-plugins ../TORF-184948/facter_mock_plugin_1234
+
+litp remove -p /deployments/test/clusters/cluster1/services/cs1
+litp remove -p /deployments/test/clusters/cluster1/nodes/node_2
+litp create_plan
+

@@ -1,0 +1,67 @@
+# An AT to prove that the vcs plugin can handle the service getting into an apd state.  Because the service group is in an apd state,
+# the service group entry in the main.cf could be incomplete. The vcs plugin will remove the service at PRE_NODE_CLUSTER_TAG and
+# will Restore and create all configuration for that service group POST_NODE_CLUSTER_TAG
+
+
+# Early setup stage
+add-plugins patch_mco_agent
+runLitpScript cluster_common.atlib
+
+
+litp create -t service -p /software/services/mock2 -o service_name='mocklsb2'
+litp create -t vcs-clustered-service -p /deployments/test/clusters/cluster1/services/cs2/ -o name="cs2" standby=1 active=1 node_list="node_1,node_2"
+litp inherit -s /software/services/mock2 -p /deployments/test/clusters/cluster1/services/cs2/applications/mock
+litp create -p /deployments/test/clusters/cluster1/services/cs2/ipaddresses/ip1 -t vip -o network_name='mgmt' ipaddress='10.10.10.154'
+
+litp create -t service -p /software/services/mock3 -o service_name='mocklsb3'
+litp create -t vcs-clustered-service -p /deployments/test/clusters/cluster1/services/cs3/ -o name="cs3" standby=1 active=1 node_list="node_1,node_2"
+litp inherit -s /software/services/mock3 -p /deployments/test/clusters/cluster1/services/cs3/applications/mock
+litp create -p /deployments/test/clusters/cluster1/services/cs3/ipaddresses/ip1 -t vip -o network_name='mgmt' ipaddress='10.10.10.157'
+litp create_plan
+litp run_plan
+
+# Storage profile setup
+litp create -t storage-profile -p /infrastructure/storage/storage_profiles/vx_sp -o volume_driver='vxvm'
+litp create -t volume-group    -p /infrastructure/storage/storage_profiles/vx_sp/volume_groups/vxvg1 -o volume_group_name='vx_dg'
+litp create -t file-system    -p /infrastructure/storage/storage_profiles/vx_sp/volume_groups/vxvg1/file_systems/versant_fs1 -o mount_point='/opt/ericsson/nms/versant' type="vxfs" size=100G snap_size=0
+litp create -t physical-device -p /infrastructure/storage/storage_profiles/vx_sp/volume_groups/vxvg1/physical_devices/lun0 -o device_name='lun0'
+litp inherit -s /infrastructure/storage/storage_profiles/vx_sp -p /deployments/test/clusters/cluster1/storage_profile/vxvm_storage
+
+# Create the vcs-cluster-service
+litp create -t service -p /software/services/mock -o service_name='mocklsb'
+litp create -t vcs-clustered-service -p /deployments/test/clusters/cluster1/services/cs1/ -o name="cs1" standby=1 active=1 node_list="node_1,node_2" dependency_list="cs2,cs3"
+litp inherit -s /software/services/mock -p /deployments/test/clusters/cluster1/services/cs1/applications/mock
+litp create -p /deployments/test/clusters/cluster1/services/cs1/ipaddresses/ip1 -t vip -o network_name='mgmt' ipaddress='10.10.10.155'
+litp inherit -p /deployments/test/clusters/cluster1/services/cs1/filesystems/versant_mount -s /deployments/test/clusters/cluster1/storage_profile/vxvm_storage/volume_groups/vxvg1/file_systems/versant_fs1
+litp create -t eth -p /deployments/test/clusters/cluster1/nodes/node_1/network_interfaces/nic_A -o device_name=eth0 macaddress=08:00:27:5B:C1:5F network_name=mgmt ipaddress=10.10.10.111
+litp create -t eth -p /deployments/test/clusters/cluster1/nodes/node_2/network_interfaces/nic_B -o device_name=eth0 macaddress=08:00:27:5B:C1:4F network_name=mgmt ipaddress=10.10.10.112
+litp create -t ha-service-config -p /deployments/test/clusters/cluster1/services/cs1/ha_configs/config_httpd -o status_interval=15 status_timeout=10 restart_limit=3000 startup_retry_limit=30
+
+litp create_plan
+litp run_plan
+
+# Create next part of the plan, but fail a task so service goes into apd state.
+litp update -p /deployments/test/clusters/cluster1/services/cs1 -o online_timeout=234
+litp create -p /deployments/test/clusters/cluster1/services/cs1/ipaddresses/ip2 -t vip -o network_name='mgmt' ipaddress='10.10.10.156'
+litp update -p /deployments/test/clusters/cluster1/services/cs1/ha_configs/config_httpd -o status_interval='20'
+litp create_plan
+failCallbackTask callback_method /deployments/test/clusters/cluster1/services/cs1/applications/mock
+litp run_plan
+
+assertAppliedPropertiesDeterminable -p /deployments/test/clusters/cluster1/services/cs1 False
+
+# Re-create the plan
+litp create_plan
+
+# Ensure the order of the tasks
+let __task_create_ip CallbackTask callback_method /deployments/test/clusters/cluster1/services/cs1/ipaddresses/ip2 callback_func=vip_callback callback_class=NetworkResourceHelper
+let __task_link_ip CallbackTask callback_method /deployments/test/clusters/cluster1/services/cs1/ipaddresses/ip2 callback_func=cb_link_vips_to_app callback_class=ApplicationResource
+let __task_update_app CallbackTask callback_method /deployments/test/clusters/cluster1/services/cs1/applications/mock callback_func=cb_update_app_before_lock callback_class=ApplicationResource
+let __task_ensure_grp_online CallbackTask callback_method /deployments/test/clusters/cluster1/services/cs1/ipaddresses/ip2 callback_func=online_callback callback_class=VcsSGOnlineHelper
+
+
+assertTaskBeforeTask __task_create_ip __task_link_ip
+assertTaskBeforeTask __task_link_ip __task_update_app
+assertTaskBeforeTask __task_update_app __task_ensure_grp_online
+litp run_plan
+

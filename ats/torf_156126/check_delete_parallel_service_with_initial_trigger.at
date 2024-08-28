@@ -1,0 +1,13 @@
+runLitpScript ../cluster_common.atlib
+
+litp create -t service -p /software/services/s1 -o service_name=svc1
+litp create -t vcs-clustered-service -p /deployments/test/clusters/cluster1/services/cs1 -o active=2 standby=0 name="cs1" node_list="node_1,node_2"
+litp inherit -s /software/services/s1 -p /deployments/test/clusters/cluster1/services/cs1/applications/app1
+litp create_plan
+litp run_plan
+
+litp create -t vcs-trigger -p /deployments/test/clusters/cluster1/services/cs1/triggers/t2 -o trigger_type="postonline"
+assertError --err_type ValidationError --err_message 'Create plan failed: postonline trigger type is only applicable to vcs-clustered-services with exactly one IPv6 VIP.' --err_vpath /deployments/test/clusters/cluster1/services/cs1/triggers/t2 create_plan
+
+litp remove -p /deployments/test/clusters/cluster1/services/cs1
+litp create_plan

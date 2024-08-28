@@ -1,0 +1,22 @@
+runLitpScript infrastructure.atlib
+runLitpScript node1.atlib
+runLitpScript node2.atlib
+runLitpScript node3.atlib
+runLitpScript node4.atlib
+
+litp create_plan
+litp run_plan
+
+litp create -t vcs-clustered-service -p /deployments/test/clusters/cluster1/services/cs1 -o name="service1" active=1 standby=1 node_list="node_1,node_2"
+litp create -t service -p /software/services/service1 -o service_name=service1
+
+litp inherit -s /software/services/service1 -p /deployments/test/clusters/cluster1/services/cs1/applications/service1
+litp create -p /deployments/test/clusters/cluster1/services/cs1/triggers/trig1 -t vcs-trigger -o trigger_type=nofailover
+
+litp create_plan
+litp run_plan
+
+litp update -p /deployments/test/clusters/cluster1/services/cs1 -o node_list="node_1,node_3"
+
+litp create_plan
+

@@ -1,0 +1,24 @@
+# Test Case 07.
+
+# Test to verify that LITP plan will fail to create when the FS is used in a single-node CS
+
+# Prerequisite - LITP Deployment
+runLitpScript ../cluster_common.atlib
+
+# Create model items for storage profiles
+litp create -t storage-profile -p /infrastructure/storage/storage_profiles/vx_sp -o volume_driver='vxvm'
+litp create -t volume-group    -p /infrastructure/storage/storage_profiles/vx_sp/volume_groups/vxvg1 -o volume_group_name='vx_dg'
+litp create -t file-system    -p /infrastructure/storage/storage_profiles/vx_sp/volume_groups/vxvg1/file_systems/versant_fs -o mount_point='/opt/ericsson/nms/versant' type="vxfs" size=100G snap_size=0
+litp create -t physical-device -p /infrastructure/storage/storage_profiles/vx_sp/volume_groups/vxvg1/physical_devices/lun0 -o device_name='lun0'
+litp inherit -p /deployments/test/clusters/cluster1/storage_profile/vx_sp -s /infrastructure/storage/storage_profiles/vx_sp
+
+# Create one node parallel service
+litp create -t vcs-clustered-service -p /deployments/test/clusters/cluster1/services/cs1 -o name="versant_listener" active=1 standby=0 node_list="node_1"
+litp create -t service -p /software/services/versant -o service_name=versantd
+litp inherit -p /deployments/test/clusters/cluster1/services/cs1/applications/versant -s /software/services/versant
+litp inherit -p /deployments/test/clusters/cluster1/services/cs1/filesystems/versant_mount -s /deployments/test/clusters/cluster1/storage_profile/vx_sp/volume_groups/vxvg1/file_systems/versant_fs
+
+# Validation should fail if we try to inherit the filesystem under one node parallel service
+let __err --err_message 'Create plan failed: File systems must not be referenced under non-failover vcs-clustered-services' --err_vpath /deployments/test/clusters/cluster1/services/cs1/filesystems/versant_mount --err_type ValidationError
+
+assertError __err create_plan

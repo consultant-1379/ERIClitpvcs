@@ -1,0 +1,16 @@
+runLitpScript cluster_common.atlib
+
+litp create -p /infrastructure/networking/networks/ipv6network -t network -o name=ipv6network
+
+
+litp create -p /deployments/test/clusters/cluster1/nodes/node_1/network_interfaces/nic_1 -t eth -o device_name=eth1 macaddress=08:00:27:5B:21:3F network_name=ipv6network
+litp create -p /deployments/test/clusters/cluster1/nodes/node_2/network_interfaces/nic_1 -t eth -o device_name=eth1 macaddress=08:00:27:5B:11:3F network_name=ipv6network
+
+litp create -t service -p /software/services/mock -o service_name=mocklsb
+litp create -t vcs-clustered-service -p /deployments/test/clusters/cluster1/services/cs1 -o name="cs1" active=1 standby=1 node_list="node_1,node_2"
+litp inherit -s /software/services/mock -p /deployments/test/clusters/cluster1/services/cs1/applications/mock
+
+litp create -p /deployments/test/clusters/cluster1/services/cs1/ipaddresses/ip1 -t vip -o network_name='ipv6network' ipaddress='FE80:0000:0000:0000:0202:B3FF:FE1E:8329/11'
+
+litp create_plan
+litp run_plan

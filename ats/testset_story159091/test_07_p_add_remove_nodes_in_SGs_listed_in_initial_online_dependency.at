@@ -1,0 +1,30 @@
+# Add and remove nodes to SG listed as a initial_online_dependency service group
+
+runLitpScript ../testset_common/three_nodes_common.atlib
+
+litp create -t service -p /software/services/mock1 -o service_name='mocklsb1'
+litp create -t vcs-clustered-service -p /deployments/test/clusters/cluster1/services/cs1/ -o name="cs1" standby=0 active=2 node_list="node_1,node_2"
+litp inherit -s /software/services/mock1 -p /deployments/test/clusters/cluster1/services/cs1/applications/mock
+
+litp create_plan
+litp run_plan
+
+litp update -p /deployments/test/clusters/cluster1/services/cs1/ -o node_list="node_1,node_3"
+litp create -t service -p /software/services/mock2 -o service_name='mocklsb2'
+litp create -t vcs-clustered-service -p /deployments/test/clusters/cluster1/services/cs2/ -o name="cs2" standby=0 active=2 node_list="node_1,node_2" initial_online_dependency_list=cs1
+litp inherit -s /software/services/mock2 -p /deployments/test/clusters/cluster1/services/cs2/applications/mock
+
+litp create_plan
+
+#  Ensure task to create new SG is after node locks and after task to Update SG to add node(s)
+
+let __task_contraction_cs1 CallbackTask callback_method /deployments/test/clusters/cluster1/services/cs1 callback_func=contraction_callback callback_class=VcsServiceGroupHelper
+let __task_update_cs1 CallbackTask callback_method /deployments/test/clusters/cluster1/services/cs1 callback_func=update_callback callback_class=VcsServiceGroupHelper
+let __task_online_cs1 CallbackTask callback_method /deployments/test/clusters/cluster1/services/cs1 callback_func=online_callback callback_class=VcsSGOnlineHelper vcs_grp_name='Grp_CS_cluster1_cs1' service_vpath=/deployments/test/clusters/cluster1/services/cs1
+let __task_online_cs2 CallbackTask callback_method /deployments/test/clusters/cluster1/services/cs2 callback_func=online_callback callback_class=VcsSGOnlineHelper vcs_grp_name='Grp_CS_cluster1_cs2' service_vpath=/deployments/test/clusters/cluster1/services/cs2
+
+assertTaskBeforeTask __task_contraction_cs1 __task_update_cs1
+assertTaskBeforeTask __task_update_cs1 __task_online_cs1
+assertTaskBeforeTask __task_online_cs1 __task_online_cs2
+
+litp run_plan

@@ -1,0 +1,30 @@
+runLitpScript cluster_common.atlib
+
+# fs1
+litp create -t storage-profile -p /infrastructure/storage/storage_profiles/vx_sp -o volume_driver='vxvm'
+litp create -t volume-group    -p /infrastructure/storage/storage_profiles/vx_sp/volume_groups/vxvg1 -o volume_group_name='vx_dg'
+litp create -t file-system    -p /infrastructure/storage/storage_profiles/vx_sp/volume_groups/vxvg1/file_systems/versant-fs1 -o mount_point='/opt/ericsson/nms/versant' type="vxfs" size=100G snap_size=0
+litp create -t physical-device -p /infrastructure/storage/storage_profiles/vx_sp/volume_groups/vxvg1/physical_devices/lun0 -o device_name='lun0'
+
+#fs2
+litp create -t storage-profile -p /infrastructure/storage/storage_profiles/vx_sp2 -o volume_driver='vxvm'
+litp create -t volume-group    -p /infrastructure/storage/storage_profiles/vx_sp2/volume_groups/vxvg2 -o volume_group_name='vx_dg2'
+litp create -t file-system     -p /infrastructure/storage/storage_profiles/vx_sp2/volume_groups/vxvg2/file_systems/versant_fs1 -o mount_point='/opt/ericsson/nms/versant2' type="vxfs" size=100G snap_size=0
+litp create -t physical-device -p /infrastructure/storage/storage_profiles/vx_sp2/volume_groups/vxvg2/physical_devices/lun0 -o device_name='lun0'
+
+litp inherit -s /infrastructure/storage/storage_profiles/vx_sp -p /deployments/test/clusters/cluster1/storage_profile/vxvm_storage
+litp inherit -s /infrastructure/storage/storage_profiles/vx_sp2 -p /deployments/test/clusters/cluster1/storage_profile/vxvm_storage2
+
+
+litp create -t vcs-clustered-service -p /deployments/test/clusters/cluster1/services/cs11 -o name="versant_listener1" active=1 standby=1 node_list="node_1,node_2"
+litp create -t service -p /software/services/versant -o service_name=versantd
+litp inherit -p /deployments/test/clusters/cluster1/services/cs11/applications/versant -s /software/services/versant
+litp inherit -p /deployments/test/clusters/cluster1/services/cs11/filesystems/versant-mount -s /deployments/test/clusters/cluster1/storage_profile/vxvm_storage/volume_groups/vxvg1/file_systems/versant-fs1
+litp inherit -p /deployments/test/clusters/cluster1/services/cs11/filesystems/versant_mount -s /deployments/test/clusters/cluster1/storage_profile/vxvm_storage2/volume_groups/vxvg2/file_systems/versant_fs1
+
+
+let __err_fs_1 --err_message 'Create plan failed: The model item_id "versant-mount" is incompatible with the model item_id in "/deployments/test/clusters/cluster1/services/cs11/filesystems/versant_mount" because "-" and "_" are interchangeable.' --err_type ValidationError  --err_vpath '/deployments/test/clusters/cluster1/services/cs11/filesystems/versant-mount'
+
+let __err_fs_2 --err_message 'Create plan failed: The model item_id "versant_mount" is incompatible with the model item_id in "/deployments/test/clusters/cluster1/services/cs11/filesystems/versant-mount" because "-" and "_" are interchangeable.' --err_type ValidationError  --err_vpath '/deployments/test/clusters/cluster1/services/cs11/filesystems/versant_mount'
+
+assertError __err_fs_1 __err_fs_2 create_plan

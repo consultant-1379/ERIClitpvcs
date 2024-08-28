@@ -1,0 +1,50 @@
+# Prerequisite - LITP deployment
+runLitpScript ../cluster_common.atlib
+runLitpScript ../add_2_nodes_to_cluster.atlib
+
+# 1. Create failover service group CS1
+litp create -t vcs-clustered-service -p /deployments/test/clusters/cluster1/services/CS1 -o name=cs1 active=1 standby=1 node_list=node_1,node_2
+litp create -t service -p /software/services/service01 -o service_name=service01
+litp inherit -s /software/services/service01 -p /deployments/test/clusters/cluster1/services/CS1/applications/service01
+
+# 2. Create failover service group CS2 with dependency on CS1
+litp create -t vcs-clustered-service -p /deployments/test/clusters/cluster1/services/CS2 -o name=cs2 active=1 standby=1 node_list=node_1,node_2 dependency_list=CS1
+litp create -t service -p /software/services/service02 -o service_name=service02
+litp inherit -s /software/services/service02 -p /deployments/test/clusters/cluster1/services/CS2/applications/service02
+
+# 3. Create failover service group CS3 with dependency on CS2
+litp create -t vcs-clustered-service -p /deployments/test/clusters/cluster1/services/CS3 -o name=cs3 active=1 standby=1 node_list=node_1,node_2 dependency_list=CS2
+litp create -t service -p /software/services/service03 -o service_name=service03
+litp inherit -s /software/services/service03 -p /deployments/test/clusters/cluster1/services/CS3/applications/service03
+
+# 4. Create failover service group CS4 with no dependencies
+litp create -t vcs-clustered-service -p /deployments/test/clusters/cluster1/services/CS4 -o name=cs4 active=1 standby=1 node_list=node_1,node_2
+litp create -t service -p /software/services/service04 -o service_name=service04
+litp inherit -s /software/services/service04 -p /deployments/test/clusters/cluster1/services/CS4/applications/service04
+
+litp create_plan
+litp run_plan
+
+# 5. Create service group CS2new that deactivates CS2
+litp create -t vcs-clustered-service -p /deployments/test/clusters/cluster1/services/CS2new -o name=cs2new active=1 standby=1 node_list=node_3,node_4 deactivates=CS2
+litp inherit -s /software/services/service02 -p /deployments/test/clusters/cluster1/services/CS2new/applications/service02
+
+# 6. Assert error re existing dependency on service for deactivation
+let __err1 --err_type ValidationError --err_vpath /deployments/test/clusters/cluster1/services/CS3 --err_message 'vcs-clustered-service "CS2" being deactivated by vcs-clustered-service "CS2new" cannot be in dependency_list'
+assertError __err1 create_plan
+
+# 7. Remove dependency of CS3 on CS2 and create_plan
+litp update --p /deployments/test/clusters/cluster1/services/CS3 -o dependency_list=
+litp create_plan
+
+# 8. Add dependency of CS3 on CS2new and create_plan
+litp update --p /deployments/test/clusters/cluster1/services/CS3 -o dependency_list=CS2new
+litp create_plan
+
+# 9. Add dependency of CS2new on CS1 and create_plan
+litp update --p /deployments/test/clusters/cluster1/services/CS2new -o dependency_list=CS1
+litp create_plan
+
+# 10. Add dependency of CS4 on CS2new and create_plan
+litp update --p /deployments/test/clusters/cluster1/services/CS4 -o dependency_list=CS2new
+litp create_plan

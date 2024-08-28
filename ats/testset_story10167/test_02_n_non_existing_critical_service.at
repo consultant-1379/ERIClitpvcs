@@ -1,0 +1,24 @@
+# Test Case 02.
+
+# To ensure that it is not possible to create, one or more "vcs-cluster" items with "critical_service" property
+# when the "vcs-clustered-service" id is not exist.(Manual - Run once, should be covered in AT's.)
+
+# 1. Create two "vcs-cluster" items with "critical_service" property and non  existing "vcs-clustered-service" id.
+runLitpScript ../testset_common/common.atlib
+runLitpScript ../testset_common/second_vcs_cluster.atlib
+
+litp update -p /deployments/test/clusters/cluster1 -o critical_service='cs1' cluster_type=sfha
+
+litp update -p /deployments/test/clusters/cluster2 -o critical_service='cs2' cluster_type=sfha
+
+litp create -t service -p /software/services/mock1 -o service_name='mocklsb1'
+
+litp create -t vcs-clustered-service -p /deployments/test/clusters/cluster1/services/cs11/ -o name="cs1" standby=1 active=1 node_list="node_1,node_2"
+litp inherit -s /software/services/mock1 -p /deployments/test/clusters/cluster1/services/cs11/applications/mock
+
+litp create -t vcs-clustered-service -p /deployments/test/clusters/cluster2/services/cs22/ -o name="cs2" standby=1 active=1 node_list="node_1,node_2"
+litp inherit -s /software/services/mock1 -p /deployments/test/clusters/cluster2/services/cs22/applications/mock
+
+# 2. Create plan and assert for Validation Error messages
+assertError --err_message 'The vcs-clustered-service "cs1" in cluster "cluster1" does not exist.' --err_vpath /deployments/test/clusters/cluster1 create_plan
+assertError --err_message 'The vcs-clustered-service "cs2" in cluster "cluster2" does not exist.' --err_vpath /deployments/test/clusters/cluster2 create_plan

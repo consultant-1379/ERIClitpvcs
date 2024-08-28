@@ -1,0 +1,5 @@
+runLitpScript cluster_common.atlib
+
+litp create -t vcs-network-host -p /deployments/test/clusters/cluster1/network_hosts/net1 -o network_name="heartbeat1" ip="8.8.8.8"
+
+assertError --err_message 'Can not add a "vcs-network-host" to a network that belongs to a VCS LLT network' create_plan

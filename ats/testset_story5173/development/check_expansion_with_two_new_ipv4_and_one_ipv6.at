@@ -1,0 +1,25 @@
+runLitpScript ../../cluster_common.atlib
+
+# Create PL service
+litp create -t service -p /software/services/mockPL -o service_name='mockPL'
+litp create -t vcs-clustered-service -p /deployments/test/clusters/cluster1/services/cs1/ -o name="cs1" standby=0 active=1 node_list="node_1"
+litp inherit -s /software/services/mockPL -p /deployments/test/clusters/cluster1/services/cs1/applications/mock
+litp create -t vip -p /deployments/test/clusters/cluster1/services/cs1/ipaddresses/ip1 -o network_name='mgmt' ipaddress='10.10.10.156'
+litp create -t vip -p /deployments/test/clusters/cluster1/services/cs1/ipaddresses/ip2 -o network_name='mgmt' ipaddress='10.10.10.157'
+
+litp create_plan
+litp run_plan
+
+# Expand service
+litp update -p /deployments/test/clusters/cluster1/services/cs1 -o active=2 node_list="node_1,node_2"
+
+# New VIPS
+litp create -t vip -p /deployments/test/clusters/cluster1/services/cs1/ipaddresses/ip3 -o network_name='mgmt' ipaddress='10.10.10.158'
+litp create -t vip -p /deployments/test/clusters/cluster1/services/cs1/ipaddresses/ip4 -o network_name='mgmt' ipaddress='10.10.10.159'
+litp create -t vip -p /deployments/test/clusters/cluster1/services/cs1/ipaddresses/ip5 -o network_name='mgmt' ipaddress='2001:abcd:ef::1/64'
+
+let __err1 --err_type ValidationError --err_message 'The number of "IPv6" VIP items for network "mgmt" must be a multiple of active property of vcs-clustered-service "cs1".' --err_vpath /deployments/test/clusters/cluster1/services/cs1
+
+let __err2 --err_type ValidationError --err_message 'The number of "IPv6" VIP items per node for network "mgmt" in vcs-clustered-service "cs1" must be the same after change of active property from "1" to "2".' --err_vpath /deployments/test/clusters/cluster1/services/cs1
+
+assertError __err1 __err2 --errors_length 2 create_plan

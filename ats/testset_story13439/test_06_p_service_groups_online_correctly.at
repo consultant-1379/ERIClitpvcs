@@ -1,0 +1,33 @@
+runLitpScript ../cluster_common.atlib
+
+litp create_plan
+litp run_plan
+
+litp create -t vcs-clustered-service -p /deployments/test/clusters/cluster1/services/cs0 -o name="service0" active=1 standby=1 node_list="node_1,node_2" initial_online_dependency_list=cs2,cs1,cs3
+litp create -t service -p /software/services/service0 -o service_name=service0
+litp inherit -s /software/services/service0 -p /deployments/test/clusters/cluster1/services/cs0/applications/service0
+
+litp create -t vcs-clustered-service -p /deployments/test/clusters/cluster1/services/cs1 -o name="service1" active=1 standby=1 node_list="node_1,node_2" initial_online_dependency_list=cs2
+litp create -t service -p /software/services/service1 -o service_name=service1
+litp inherit -s /software/services/service1 -p /deployments/test/clusters/cluster1/services/cs1/applications/service1
+
+litp create -t vcs-clustered-service -p /deployments/test/clusters/cluster1/services/cs2 -o name="service2" active=1 standby=1 node_list="node_1,node_2"
+litp create -t service -p /software/services/service2 -o service_name=service2
+litp inherit -s /software/services/service2 -p /deployments/test/clusters/cluster1/services/cs2/applications/service2
+
+litp create -t vcs-clustered-service -p /deployments/test/clusters/cluster1/services/cs3 -o name="httpd" active=1 standby=1 node_list="node_1,node_2"
+litp create -t service -p /software/services/service3 -o service_name=service3
+litp inherit -s /software/services/service3 -p /deployments/test/clusters/cluster1/services/cs3/applications/service3
+
+litp create_plan
+
+let __task_online_cs0 CallbackTask callback_method /deployments/test/clusters/cluster1/services/cs0 callback_func=online_callback callback_class=VcsSGOnlineHelper vcs_grp_name='Grp_CS_cluster1_cs0' service_vpath=/deployments/test/clusters/cluster1/services/cs0
+let __task_online_cs1 CallbackTask callback_method /deployments/test/clusters/cluster1/services/cs1 callback_func=online_callback callback_class=VcsSGOnlineHelper vcs_grp_name='Grp_CS_cluster1_cs1' service_vpath=/deployments/test/clusters/cluster1/services/cs1
+let __task_online_cs2 CallbackTask callback_method /deployments/test/clusters/cluster1/services/cs2 callback_func=online_callback callback_class=VcsSGOnlineHelper vcs_grp_name='Grp_CS_cluster1_cs2' service_vpath=/deployments/test/clusters/cluster1/services/cs2
+let __task_online_cs3 CallbackTask callback_method /deployments/test/clusters/cluster1/services/cs3 callback_func=online_callback callback_class=VcsSGOnlineHelper vcs_grp_name='Grp_CS_cluster1_cs3' service_vpath=/deployments/test/clusters/cluster1/services/cs3
+
+assertTaskBeforeTask __task_online_cs2 __task_online_cs3
+assertTaskBeforeTask __task_online_cs3 __task_online_cs1
+assertTaskBeforeTask __task_online_cs1 __task_online_cs0
+
+litp run_plan

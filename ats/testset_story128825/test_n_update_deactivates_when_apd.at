@@ -1,0 +1,64 @@
+# Prerequisite - LITP deployment
+runLitpScript ../cluster_common.atlib
+runLitpScript ../add_2_nodes_to_cluster.atlib
+add-plugins plugins/set_deactivated
+
+# 1. Create a failover service groups CS1 and CS2
+litp create -t vcs-clustered-service -p /deployments/test/clusters/cluster1/services/CS1 -o name=cs1 active=1 standby=1 node_list=node_1,node_2
+litp create -t service -p /software/services/service01 -o service_name=service01
+litp inherit -s /software/services/service01 -p /deployments/test/clusters/cluster1/services/CS1/applications/service01
+
+litp create -t vcs-clustered-service -p /deployments/test/clusters/cluster1/services/CS2 -o name=cs2 active=1 standby=1 node_list=node_1,node_2
+litp create -t service -p /software/services/service02 -o service_name=service02
+litp inherit -s /software/services/service02 -p /deployments/test/clusters/cluster1/services/CS2/applications/service02
+
+litp create -t vcs-clustered-service -p /deployments/test/clusters/cluster1/services/CS4 -o name=cs4 active=1 standby=1 node_list=node_1,node_2
+litp create -t service -p /software/services/service04 -o service_name=service04
+litp inherit -s /software/services/service04 -p /deployments/test/clusters/cluster1/services/CS4/applications/service04
+
+litp create_plan
+litp run_plan
+
+# 2. Create CS3 that deactivates CS1
+litp create -t vcs-clustered-service -p /deployments/test/clusters/cluster1/services/CS3 -o name=cs3 active=1 standby=1 node_list=node_3,node_4 deactivates=CS1
+litp inherit -s /software/services/service01 -p /deployments/test/clusters/cluster1/services/CS3/applications/service01
+litp create_plan
+
+# 3. Fail the plan so CS1 is apd true and CS3 is apd false
+failCallbackTask callback_method /deployments/test/clusters/cluster1/services/CS3/applications/service01
+litp run_plan
+assertAppliedPropertiesDeterminable -p /deployments/test/clusters/cluster1/services/CS1 True
+assertAppliedPropertiesDeterminable -p /deployments/test/clusters/cluster1/services/CS3 False
+
+# 4. Update CS3 to deactivate CS2 and set applied service CS4 to deactivate CS1
+#    and verify error messages
+litp update -p /deployments/test/clusters/cluster1/services/CS3 -o deactivates=CS2
+litp update -p /deployments/test/clusters/cluster1/services/CS4 -o deactivates=CS1
+
+let __err1 --err_type ValidationError --err_vpath /deployments/test/clusters/cluster1/services/CS4 --err_message 'Cannot set deactivates property on a vcs-clustered-service that is not in Initial state.'
+let __err2 --err_type ValidationError --err_vpath /deployments/test/clusters/cluster1/services/CS1 --err_message 'Cannot update deactivates property on a vcs-clustered-service when deactivation is incomplete.'
+assertError --errors_length 2 __err1 __err2 create_plan
+
+# 5. Remove deactivates property from CS4. Create CS5 and set to deactivate CS1
+#    and verify error message
+litp update -p /deployments/test/clusters/cluster1/services/CS4 -d deactivates
+litp create -t vcs-clustered-service -p /deployments/test/clusters/cluster1/services/CS5 -o name=cs5 active=1 standby=1 node_list=node_1,node_2 deactivates=CS1
+litp create -t service -p /software/services/service05 -o service_name=service05
+litp inherit -s /software/services/service05 -p /deployments/test/clusters/cluster1/services/CS5/applications/service05
+
+assertError --errors_length 1 __err2 create_plan
+
+# 6. Remove deactivates property from CS5 and verify error message
+litp update -p /deployments/test/clusters/cluster1/services/CS5 -d deactivates
+let __err5 --err_type ValidationError --err_vpath /deployments/test/clusters/cluster1/services/CS1 --err_message 'Cannot update deactivates property on a vcs-clustered-service when deactivation is incomplete.'
+assertError --errors_length=1 __err5 create_plan
+
+# 7. Remove CS3 deactivates property and verify validation error
+litp update -p /deployments/test/clusters/cluster1/services/CS3 -d deactivates
+assertError --errors_length=1 __err5 create_plan
+
+# 8. Reset CS3 deactivates property to deactivate CS1
+litp update -p /deployments/test/clusters/cluster1/services/CS3 -o deactivates=CS1
+litp create_plan
+
+add-plugins plugins/reset_gen_deact_task

@@ -1,0 +1,60 @@
+# test_04_p_cs_initial_on_different_clusters.at
+
+# Description:
+#
+# When more than one cluster exists in the litp model, the cs_initial_online property must be set on each cluster
+# and the litp plan must reflect the expected configuration for each cluster.
+# The cs_initial_online property is on by default.
+#
+# Test Steps:
+#
+# 1. Execute a litp create command, creating a second vcs-cluster model item and setting the cs_initial_online value to off
+# 2. Add any required model items to both vcs-cluster items
+# 3. Execute a litp create_plan command
+# 4. Assert the litp show_plan tasks contain a task to online the service groups for the first vcs-cluster item only.
+#
+# Expected Result:
+#
+# The litp plan must contain a task to online the service groups for the first cluster item only.
+
+# Prerequisite - LITP Deployment
+runLitpScript ../cluster_common.atlib
+
+
+# 1. Execute a litp create command, creating a second vcs-cluster model item and setting the cs_initial_online value to off
+litp create -p /deployments/test/clusters/cluster2   -t vcs-cluster  -o cluster_type=sfha llt_nets="heartbeat1,heartbeat2" low_prio_net="mgmt" cluster_id="2" cs_initial_online=off
+
+# 2. Add any required model items to both vcs-cluster items
+
+# Setup Node1 on cluster2
+litp create -p /deployments/test/clusters/cluster2/nodes/node_1                             -t node             -o hostname=mnA
+litp inherit -p /deployments/test/clusters/cluster2/nodes/node_1/system                     -s              /infrastructure/systems/system_1
+litp inherit -p /deployments/test/clusters/cluster2/nodes/node_1/routes/default             -s              /infrastructure/networking/routes/def
+litp inherit -p /deployments/test/clusters/cluster2/nodes/node_1/storage_profile            -s              /infrastructure/storage/storage_profiles/profile_1
+litp inherit -p /deployments/test/clusters/cluster2/nodes/node_1/os                         -s              /software/profiles/rhel_6_4
+litp create -p /deployments/test/clusters/cluster2/nodes/node_1/network_interfaces/nic_0  -t eth              -o device_name=eth0 macaddress=08:00:27:5B:C1:3F network_name=mgmt ipaddress=10.10.10.101
+litp create -p /deployments/test/clusters/cluster2/nodes/node_1/network_interfaces/nic_2  -t eth              -o device_name=eth2 macaddress=08:00:27:06:C0:61 network_name=heartbeat1
+litp create -p /deployments/test/clusters/cluster2/nodes/node_1/network_interfaces/nic_3  -t eth              -o device_name=eth3 macaddress=08:00:27:21:7D:BC network_name=heartbeat2
+
+# Setup Node2 on cluster2
+litp create -p /deployments/test/clusters/cluster2/nodes/node_2                             -t node             -o hostname=mnB
+litp inherit -p /deployments/test/clusters/cluster2/nodes/node_2/system                     -s              /infrastructure/systems/system_2
+litp inherit -p /deployments/test/clusters/cluster2/nodes/node_2/routes/default             -s              /infrastructure/networking/routes/def
+litp inherit -p /deployments/test/clusters/cluster2/nodes/node_2/storage_profile            -s              /infrastructure/storage/storage_profiles/profile_1
+litp inherit -p /deployments/test/clusters/cluster2/nodes/node_2/os                         -s              /software/profiles/rhel_6_4
+litp create -p /deployments/test/clusters/cluster2/nodes/node_2/network_interfaces/nic_0  -t eth              -o device_name=eth0 macaddress=08:00:27:5B:C1:31 network_name=mgmt ipaddress=10.10.10.102
+litp create -p /deployments/test/clusters/cluster2/nodes/node_2/network_interfaces/nic_2  -t eth              -o device_name=eth2 macaddress=08:00:27:06:C0:62 network_name=heartbeat1
+litp create -p /deployments/test/clusters/cluster2/nodes/node_2/network_interfaces/nic_3  -t eth              -o device_name=eth3 macaddress=08:00:27:21:7D:B3 network_name=heartbeat2
+
+litp create -t service -p /software/services/mock -o service_name=mocklsb
+litp create -t vcs-clustered-service -p /deployments/test/clusters/cluster1/services/cs1 -o name="cs1" active=2 standby=0 node_list="node_1,node_2"
+litp create -t vcs-clustered-service -p /deployments/test/clusters/cluster2/services/cs1 -o name="cs1" active=2 standby=0 node_list="node_1,node_2"
+litp inherit -s /software/services/mock -p /deployments/test/clusters/cluster1/services/cs1/applications/mock
+litp inherit -s /software/services/mock -p /deployments/test/clusters/cluster2/services/cs1/applications/mock
+
+# 3. Execute a litp create_plan command
+litp create_plan
+
+# 4. Assert the litp show_plan tasks contain a task to online the service groups for the first vcs-cluster item only
+assertTask 5 callback_method ms1 /deployments/test/clusters/cluster1/services/cs1 Initial 'Bring VCS service group "Grp_CS_cluster1_cs1" online'
+assertNoCallbackTask callback_method ms1 /deployments/test/clusters/cluster2/services/cs1 Initial 'Bring VCS service group "Grp_CS_cluster2_cs1" online'

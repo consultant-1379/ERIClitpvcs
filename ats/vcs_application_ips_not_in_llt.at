@@ -1,0 +1,45 @@
+runLitpScript cluster_common.atlib
+
+#Include an ipaddress in the llt network
+litp update -p /deployments/test/clusters/cluster1/nodes/node_1/network_interfaces/nic_3 -o ipaddress=10.10.10.100
+
+assertError --err_message "Interface is used for VCS llt. It should not have an IP address" create_plan
+
+litp update -p /deployments/test/clusters/cluster1/nodes/node_1/network_interfaces/nic_3 -d ipaddress
+
+litp create_plan
+
+#Include an ipaddress in the llt network
+litp update -p /deployments/test/clusters/cluster1/nodes/node_1/network_interfaces/nic_3 -o ipv6address=fdde:4d7e:d471::835:66:102/64
+
+assertError --err_message "Interface is used for VCS llt. It should not have an IP address" create_plan
+
+litp update -p /deployments/test/clusters/cluster1/nodes/node_1/network_interfaces/nic_3 -d ipv6address
+
+litp create_plan
+
+
+#Include an vip in the llt network
+litp create -t vcs-clustered-service -p /deployments/test/clusters/cluster1/services/cs1 -o name="httpd" active=2 standby=0 node_list="node_1,node_2"
+litp create -t service -p /software/services/mock -o service_name=mocklsb
+litp inherit -s /software/services/mock -p /deployments/test/clusters/cluster1/services/cs1/applications/mock
+
+litp create -p /deployments/test/clusters/cluster1/services/cs1/ipaddresses/ip1 -t vip -o network_name='heartbeat1' ipaddress='10.10.10.155'
+litp create -p /deployments/test/clusters/cluster1/services/cs1/ipaddresses/ip2 -t vip -o network_name='heartbeat2' ipaddress='10.10.10.156'
+
+assertError --err_message "Can not create VIPs on llt" create_plan
+
+litp update -p /deployments/test/clusters/cluster1/services/cs1/ipaddresses/ip1 -o network_name='mgmt'
+litp update -p /deployments/test/clusters/cluster1/services/cs1/ipaddresses/ip2 -o network_name='mgmt'
+
+litp create_plan
+
+litp create -p /deployments/test/clusters/cluster1/services/cs1/ipaddresses/ipv6_1 -t vip -o network_name='heartbeat1' ipaddress='fdde:4d7e:d471::835:66:102/64'
+litp create -p /deployments/test/clusters/cluster1/services/cs1/ipaddresses/ipv6_2 -t vip -o network_name='heartbeat2' ipaddress='fdde:4d7e:d471::835:66:103/64'
+
+assertError --err_message "Can not create VIPs on llt" create_plan
+
+litp update -p /deployments/test/clusters/cluster1/services/cs1/ipaddresses/ipv6_1 -o network_name='mgmt'
+litp update -p /deployments/test/clusters/cluster1/services/cs1/ipaddresses/ipv6_2 -o network_name='mgmt'
+
+litp create_plan

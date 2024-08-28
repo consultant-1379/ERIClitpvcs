@@ -1,0 +1,17 @@
+runLitpScript ../cluster_common.atlib
+
+litp create -t vcs-clustered-service -p /deployments/test/clusters/cluster1/services/cs1 -o name="httpd" active=2 standby=0 node_list="node_1,node_2"
+litp create -t service -p /software/services/service1 -o service_name=httpd
+litp inherit -p /deployments/test/clusters/cluster1/services/cs1/applications/service1 -s /software/services/service1
+
+litp create_plan
+litp run_plan
+
+litp create -t vcs-clustered-service -p /deployments/test/clusters/cluster1/services/cs2 -o name="httpd" active=2 standby=0 node_list="node_1,node_2"
+litp inherit -p /deployments/test/clusters/cluster1/services/cs2/applications/service1 -s /software/services/service1
+
+assertError --err_message 'There are 2 clustered services using the same "name" property as "httpd", this should be unique' --err_vpath /deployments/test/clusters/cluster1/services/cs2 create_plan
+
+litp remove -p /deployments/test/clusters/cluster1/services/cs1
+litp create_plan
+litp run_plan

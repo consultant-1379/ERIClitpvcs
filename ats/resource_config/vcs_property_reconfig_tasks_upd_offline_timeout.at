@@ -1,0 +1,7 @@
+runLitpScript ../cluster_common.atlib
+runLitpScript ./vcs_property_reconfig_tasks_create.atlib
+
+# Verify callback task created for online_timeout update
+litp update -p /deployments/test/clusters/cluster1/services/cs1 -o offline_timeout=340
+litp create_plan
+assertCallbackTask callback_method /deployments/test/clusters/cluster1/services/cs1/applications/s1 callback_func=cb_update_app_before_lock callback_class=ApplicationResource

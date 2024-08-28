@@ -1,0 +1,153 @@
+# Basic lib for setting up a VCS cluster
+# Create an OS Profile
+litp create -t os-profile -p /software/profiles/rhel_6_4 -o name=sample-profile version=rhel6 path=/profiles/node-iso/ arch=x86_64 breed=redhat kopts_post='console=ttyS0,115200'
+
+# Create 2 node systems
+litp create -t system -p /infrastructure/systems/system_1 -o system_name=MN1VM
+litp create -t system -p /infrastructure/systems/system_2 -o system_name=MN2VM
+
+# Nodes Disks
+litp create -t disk -p /infrastructure/systems/system_1/disks/disk0 -o name=hd0 size=11G bootable=true uuid=c2996df73ab69d1577ea390fb2c8
+litp create -t disk -p /infrastructure/systems/system_2/disks/disk0 -o name=hd0 size=11G bootable=true uuid=c29d5a97a382bbc3114dd0301934
+
+# Create a Network Profile for the node
+litp create -t network -p /infrastructure/networking/networks/mgmt -o name=mgmt litp_management=true subnet=10.0.0.0/24
+
+litp create -t network -p /infrastructure/networking/networks/hb1 -o name=heartbeat1
+litp create -t network -p /infrastructure/networking/networks/hb2 -o name=heartbeat2
+
+litp create -t network -p /infrastructure/networking/networks/traffic1 -o name=traffic1 litp_management=false subnet=10.10.0.0/24
+litp create -t network -p /infrastructure/networking/networks/traffic2 -o name=traffic2 litp_management=false subnet=10.20.0.0/24
+litp create -t network -p /infrastructure/networking/networks/traffic3 -o name=traffic3 litp_management=false subnet=10.30.0.0/24
+
+# Route profile
+litp create -t route -p /infrastructure/networking/routes/def -o subnet=0.0.0.0/0 gateway=10.0.0.1
+
+# Storage profile
+litp create -t storage-profile -p /infrastructure/storage/storage_profiles/profile_1
+litp create -t volume-group    -p /infrastructure/storage/storage_profiles/profile_1/volume_groups/vg1                           -o volume_group_name=vg_root
+litp create -t file-system     -p /infrastructure/storage/storage_profiles/profile_1/volume_groups/vg1/file_systems/root         -o type=ext4 mount_point=/ size=16G
+litp create -t physical-device -p /infrastructure/storage/storage_profiles/profile_1/volume_groups/vg1/physical_devices/internal -o device_name=hd0
+
+# IP for MS
+litp create -t eth -p /ms/network_interfaces/if0 -o network_name=mgmt ipaddress=10.0.0.100 macaddress=aa:aa:aa:aa:aa:aa device_name=eth0
+
+# create cobbler service
+litp create -t cobbler-service -p /ms/services/cobbler
+
+# Setup Cluster
+litp create -t deployment  -p /deployments/d1
+litp create -t vcs-cluster -p /deployments/d1/clusters/c1 -o cluster_type=sfha llt_nets="heartbeat1,heartbeat2" low_prio_net="mgmt" cluster_id="1"
+
+# inherit networks
+
+# Setup Node1
+litp create -t node -p /deployments/d1/clusters/c1/nodes/n1 -o hostname=mn1
+litp create -t eth -p /deployments/d1/clusters/c1/nodes/n1/network_interfaces/if0 -o device_name=eth0 macaddress=08:01:27:5B:C1:3F network_name=mgmt ipaddress=10.0.0.101
+litp create -t eth -p /deployments/d1/clusters/c1/nodes/n1/network_interfaces/if2 -o device_name=eth2 macaddress=08:01:27:06:C0:61 network_name=heartbeat1
+litp create -t eth -p /deployments/d1/clusters/c1/nodes/n1/network_interfaces/if3 -o device_name=eth3 macaddress=08:01:27:21:7D:BC network_name=heartbeat2
+litp create -t eth -p /deployments/d1/clusters/c1/nodes/n1/network_interfaces/if4 -o device_name=eth4 macaddress=08:01:27:21:4D:BC network_name=traffic1
+litp create -t eth -p /deployments/d1/clusters/c1/nodes/n1/network_interfaces/if5 -o device_name=eth5 macaddress=08:01:27:21:5D:BC network_name=traffic2
+litp create -t eth -p /deployments/d1/clusters/c1/nodes/n1/network_interfaces/if6 -o device_name=eth6 macaddress=08:01:27:21:6D:BC network_name=traffic3
+
+litp inherit -s /infrastructure/systems/system_1                   -p /deployments/d1/clusters/c1/nodes/n1/system
+litp inherit -s /infrastructure/networking/routes/def              -p /deployments/d1/clusters/c1/nodes/n1/routes/default
+litp inherit -s /infrastructure/storage/storage_profiles/profile_1 -p /deployments/d1/clusters/c1/nodes/n1/storage_profile
+litp inherit -s /software/profiles/rhel_6_4 -p /deployments/d1/clusters/c1/nodes/n1/os
+
+# Setup Node2
+litp create -t node -p /deployments/d1/clusters/c1/nodes/n2 -o hostname=mn2
+litp create -t eth -p /deployments/d1/clusters/c1/nodes/n2/network_interfaces/if0 -o device_name=eth0 macaddress=08:02:27:5B:C1:3F network_name=mgmt ipaddress=10.0.0.101
+litp create -t eth -p /deployments/d1/clusters/c1/nodes/n2/network_interfaces/if2 -o device_name=eth2 macaddress=08:02:27:06:C0:61 network_name=heartbeat1
+litp create -t eth -p /deployments/d1/clusters/c1/nodes/n2/network_interfaces/if3 -o device_name=eth3 macaddress=08:02:27:21:7D:BC network_name=heartbeat2
+litp create -t eth -p /deployments/d1/clusters/c1/nodes/n2/network_interfaces/if4 -o device_name=eth4 macaddress=08:02:27:21:4D:BC network_name=traffic1
+litp create -t eth -p /deployments/d1/clusters/c1/nodes/n2/network_interfaces/if5 -o device_name=eth5 macaddress=08:02:27:21:5D:BC network_name=traffic2
+litp create -t eth -p /deployments/d1/clusters/c1/nodes/n2/network_interfaces/if6 -o device_name=eth6 macaddress=08:02:27:21:6D:BC network_name=traffic3
+
+litp inherit -s /infrastructure/systems/system_2                   -p /deployments/d1/clusters/c1/nodes/n2/system
+litp inherit -s /infrastructure/networking/routes/def              -p /deployments/d1/clusters/c1/nodes/n2/routes/default
+litp inherit -s /infrastructure/storage/storage_profiles/profile_1 -p /deployments/d1/clusters/c1/nodes/n2/storage_profile
+litp inherit -s /software/profiles/rhel_6_4 -p /deployments/d1/clusters/c1/nodes/n2/os
+
+# Setup Node3
+litp create -t node -p /deployments/d1/clusters/c1/nodes/n3 -o hostname=mn3
+litp create -t eth -p /deployments/d1/clusters/c1/nodes/n3/network_interfaces/if0 -o device_name=eth0 macaddress=08:02:27:5B:C1:3F network_name=mgmt ipaddress=10.0.0.101
+litp create -t eth -p /deployments/d1/clusters/c1/nodes/n3/network_interfaces/if2 -o device_name=eth2 macaddress=08:02:27:06:C0:61 network_name=heartbeat1
+litp create -t eth -p /deployments/d1/clusters/c1/nodes/n3/network_interfaces/if3 -o device_name=eth3 macaddress=08:02:27:21:7D:BC network_name=heartbeat2
+litp create -t eth -p /deployments/d1/clusters/c1/nodes/n3/network_interfaces/if4 -o device_name=eth4 macaddress=08:02:27:21:4D:BC network_name=traffic1
+litp create -t eth -p /deployments/d1/clusters/c1/nodes/n3/network_interfaces/if5 -o device_name=eth5 macaddress=08:02:27:21:5D:BC network_name=traffic2
+litp create -t eth -p /deployments/d1/clusters/c1/nodes/n3/network_interfaces/if6 -o device_name=eth6 macaddress=08:02:27:21:6D:BC network_name=traffic3
+
+litp inherit -s /infrastructure/systems/system_2                   -p /deployments/d1/clusters/c1/nodes/n3/system
+litp inherit -s /infrastructure/networking/routes/def              -p /deployments/d1/clusters/c1/nodes/n3/routes/default
+litp inherit -s /infrastructure/storage/storage_profiles/profile_1 -p /deployments/d1/clusters/c1/nodes/n3/storage_profile
+litp inherit -s /software/profiles/rhel_6_4 -p /deployments/d1/clusters/c1/nodes/n3/os
+
+# Setup Node4
+litp create -t node -p /deployments/d1/clusters/c1/nodes/n4 -o hostname=mn4
+litp create -t eth -p /deployments/d1/clusters/c1/nodes/n4/network_interfaces/if0 -o device_name=eth0 macaddress=08:02:27:5B:C1:3F network_name=mgmt ipaddress=10.0.0.101
+litp create -t eth -p /deployments/d1/clusters/c1/nodes/n4/network_interfaces/if2 -o device_name=eth2 macaddress=08:02:27:06:C0:61 network_name=heartbeat1
+litp create -t eth -p /deployments/d1/clusters/c1/nodes/n4/network_interfaces/if3 -o device_name=eth3 macaddress=08:02:27:21:7D:BC network_name=heartbeat2
+litp create -t eth -p /deployments/d1/clusters/c1/nodes/n4/network_interfaces/if4 -o device_name=eth4 macaddress=08:02:27:21:4D:BC network_name=traffic1
+litp create -t eth -p /deployments/d1/clusters/c1/nodes/n4/network_interfaces/if5 -o device_name=eth5 macaddress=08:02:27:21:5D:BC network_name=traffic2
+litp create -t eth -p /deployments/d1/clusters/c1/nodes/n4/network_interfaces/if6 -o device_name=eth6 macaddress=08:02:27:21:6D:BC network_name=traffic3
+
+litp inherit -s /infrastructure/systems/system_2                   -p /deployments/d1/clusters/c1/nodes/n4/system
+litp inherit -s /infrastructure/networking/routes/def              -p /deployments/d1/clusters/c1/nodes/n4/routes/default
+litp inherit -s /infrastructure/storage/storage_profiles/profile_1 -p /deployments/d1/clusters/c1/nodes/n4/storage_profile
+litp inherit -s /software/profiles/rhel_6_4 -p /deployments/d1/clusters/c1/nodes/n4/os
+
+# Services and VIPs
+litp create -t package -p /software/items/cups -o name=cups
+litp create -t service -p /software/services/cups -o service_name=cups
+litp inherit -s /software/items/cups -p /software/services/cups/packages/cups
+
+litp create -t vcs-clustered-service -p /deployments/d1/clusters/c1/services/PL_cups -o active=2 standby=0 name=PL_cups online_timeout=45 node_list=n1,n2
+litp inherit -s /software/services/cups -p /deployments/d1/clusters/c1/services/PL_cups/applications/APP_cups
+litp create -t vip -p /deployments/d1/clusters/c1/services/PL_cups/ipaddresses/PL_cups_vip_1 -o ipaddress=10.10.0.10 network_name=traffic1
+litp create -t vip -p /deployments/d1/clusters/c1/services/PL_cups/ipaddresses/PL_cups_vip_2 -o ipaddress=10.10.0.11 network_name=traffic1
+litp create -t vip -p /deployments/d1/clusters/c1/services/PL_cups/ipaddresses/PL_cups_vip_3 -o ipaddress=1001::0:10/11 network_name=traffic1
+litp create -t vip -p /deployments/d1/clusters/c1/services/PL_cups/ipaddresses/PL_cups_vip_4 -o ipaddress=1001::0:11/11 network_name=traffic1
+
+litp create -t vcs-clustered-service -p /deployments/d1/clusters/c1/services/FO_cups -o active=1 standby=1 name=FO_cups online_timeout=45 node_list=n3,n4
+litp inherit -s /software/services/cups -p /deployments/d1/clusters/c1/services/FO_cups/applications/APP_cups
+litp create -t vip -p /deployments/d1/clusters/c1/services/FO_cups/ipaddresses/FO_cups_vip_1 -o ipaddress=10.10.0.12 network_name=traffic1
+litp create -t vip -p /deployments/d1/clusters/c1/services/FO_cups/ipaddresses/FO_cups_vip_2 -o ipaddress=10.10.0.13 network_name=traffic1
+litp create -t vip -p /deployments/d1/clusters/c1/services/FO_cups/ipaddresses/FO_cups_vip_3 -o ipaddress=1001::0:12/11 network_name=traffic1
+litp create -t vip -p /deployments/d1/clusters/c1/services/FO_cups/ipaddresses/FO_cups_vip_4 -o ipaddress=1001::0:13/11 network_name=traffic1
+
+litp create -t package -p /software/items/nscd -o name=nscd
+litp create -t service -p /software/services/nscd -o service_name=nscd
+litp inherit -s /software/items/nscd -p /software/services/nscd/packages/nscd
+
+litp create -t vcs-clustered-service -p /deployments/d1/clusters/c1/services/FO_nscd -o active=1 standby=1 name=FO_nscd online_timeout=45 node_list=n1,n2
+litp inherit -s /software/services/nscd -p /deployments/d1/clusters/c1/services/FO_nscd/applications/APP_nscd
+litp create -t vip -p /deployments/d1/clusters/c1/services/FO_nscd/ipaddresses/FO_nscd_vip_1 -o ipaddress=10.10.0.20 network_name=traffic1
+litp create -t vip -p /deployments/d1/clusters/c1/services/FO_nscd/ipaddresses/FO_nscd_vip_2 -o ipaddress=10.10.0.21 network_name=traffic1
+litp create -t vip -p /deployments/d1/clusters/c1/services/FO_nscd/ipaddresses/FO_nscd_vip_3 -o ipaddress=1001::0:20/11 network_name=traffic1
+litp create -t vip -p /deployments/d1/clusters/c1/services/FO_nscd/ipaddresses/FO_nscd_vip_4 -o ipaddress=1001::0:21/11 network_name=traffic1
+
+litp create -t vcs-clustered-service -p /deployments/d1/clusters/c1/services/PL_nscd -o active=2 standby=0 name=PL_nscd online_timeout=45 node_list=n3,n4
+litp inherit -s /software/services/nscd -p /deployments/d1/clusters/c1/services/PL_nscd/applications/APP_nscd
+litp create -t vip -p /deployments/d1/clusters/c1/services/PL_nscd/ipaddresses/PL_nscd_vip_1 -o ipaddress=10.10.0.22 network_name=traffic1
+litp create -t vip -p /deployments/d1/clusters/c1/services/PL_nscd/ipaddresses/PL_nscd_vip_2 -o ipaddress=10.10.0.23 network_name=traffic1
+litp create -t vip -p /deployments/d1/clusters/c1/services/PL_nscd/ipaddresses/PL_nscd_vip_3 -o ipaddress=1001::0:22/11 network_name=traffic1
+litp create -t vip -p /deployments/d1/clusters/c1/services/PL_nscd/ipaddresses/PL_nscd_vip_4 -o ipaddress=1001::0:23/11 network_name=traffic1
+
+litp create -t package -p /software/items/samba -o name=samba
+litp create -t service -p /software/services/samba -o service_name=smb
+litp inherit -s /software/items/samba -p /software/services/samba/packages/samba
+
+litp create -t vcs-clustered-service -p /deployments/d1/clusters/c1/services/FO_samba -o active=1 standby=1 name=FO_samba online_timeout=45 node_list=n1,n3
+litp inherit -s /software/services/samba -p /deployments/d1/clusters/c1/services/FO_samba/applications/APP_samba
+litp create -t vip -p /deployments/d1/clusters/c1/services/FO_samba/ipaddresses/FO_samba_vip_1 -o ipaddress=10.10.0.30 network_name=traffic1
+litp create -t vip -p /deployments/d1/clusters/c1/services/FO_samba/ipaddresses/FO_samba_vip_2 -o ipaddress=10.10.0.31 network_name=traffic1
+litp create -t vip -p /deployments/d1/clusters/c1/services/FO_samba/ipaddresses/FO_samba_vip_3 -o ipaddress=1001::0:30/11 network_name=traffic1
+litp create -t vip -p /deployments/d1/clusters/c1/services/FO_samba/ipaddresses/FO_samba_vip_4 -o ipaddress=1001::0:31/11 network_name=traffic1
+
+litp create -t vcs-clustered-service -p /deployments/d1/clusters/c1/services/PL_samba -o active=2 standby=0 name=PL_samba online_timeout=45 node_list=n2,n4
+litp inherit -s /software/services/samba -p /deployments/d1/clusters/c1/services/PL_samba/applications/APP_samba
+litp create -t vip -p /deployments/d1/clusters/c1/services/PL_samba/ipaddresses/PL_samba_vip_1 -o ipaddress=10.10.0.32 network_name=traffic1
+litp create -t vip -p /deployments/d1/clusters/c1/services/PL_samba/ipaddresses/PL_samba_vip_2 -o ipaddress=10.10.0.33 network_name=traffic1
+litp create -t vip -p /deployments/d1/clusters/c1/services/PL_samba/ipaddresses/PL_samba_vip_3 -o ipaddress=1001::0:32/11 network_name=traffic1
+litp create -t vip -p /deployments/d1/clusters/c1/services/PL_samba/ipaddresses/PL_samba_vip_4 -o ipaddress=1001::0:33/11 network_name=traffic1

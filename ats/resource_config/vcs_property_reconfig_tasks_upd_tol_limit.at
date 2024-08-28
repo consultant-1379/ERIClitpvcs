@@ -1,0 +1,7 @@
+runLitpScript ../cluster_common.atlib
+runLitpScript ./vcs_property_reconfig_tasks_create.atlib
+
+# Verify callback task created for ha-service-config tolerance_limit update
+litp update -p /deployments/test/clusters/cluster1/services/cs1/ha_configs/service_config -o tolerance_limit="2"
+litp create_plan
+assertCallbackTask callback_method /deployments/test/clusters/cluster1/services/cs1/applications/s1 callback_func=cb_update_app_before_lock callback_class=ApplicationResource

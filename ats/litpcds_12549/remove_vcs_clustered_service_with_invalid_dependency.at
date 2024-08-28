@@ -1,0 +1,19 @@
+runLitpScript ../cluster_common.atlib
+
+litp create -t service -p /software/services/mock -o service_name='mocklsb'
+
+# Create service group on node_1 and node_2
+litp create -t vcs-clustered-service -p /deployments/test/clusters/cluster1/services/cs1/ -o name="cs1" standby=0 active=2 node_list="node_1,node_2"
+litp inherit -s /software/services/mock -p /deployments/test/clusters/cluster1/services/cs1/applications/mock
+
+litp create_plan
+litp run_plan
+
+litp update -p /deployments/test/clusters/cluster1/services/cs1 -o dependency_list=dummy1
+
+# litp create_plan
+assertError --err_message "'/deployments/test/clusters/cluster1/services/dummy1' does not exist. Please ensure dependency_list property is correct" create_plan
+
+# Remove service group
+litp remove -p /deployments/test/clusters/cluster1/services/cs1
+litp create_plan

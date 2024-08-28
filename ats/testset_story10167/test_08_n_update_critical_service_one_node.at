@@ -1,0 +1,20 @@
+# Test Case 08.
+
+# To ensure that it is not possible to update, a "vcs-cluster" with "critical_service" property present when the cluster include one node.
+# (Manual - Run once, should be covered in AT's.)
+
+# 1. Create a "vcs-cluster" with one node into the cluster.
+runLitpScript ../testset_common/one_node_common.atlib
+litp update -p /deployments/test/clusters/cluster1 -o cluster_type=sfha
+
+
+# 2. Create test service single in parallel ha mode
+litp create -t service -p /software/services/mock -o service_name='mocklsb'
+litp create -t vcs-clustered-service -p /deployments/test/clusters/cluster1/services/cs1/ -o name="cs1" standby=0 active=1 node_list="node_1"
+litp inherit -s /software/services/mock -p /deployments/test/clusters/cluster1/services/cs1/applications/mock
+litp create_plan
+litp run_plan
+
+# 3. Update cluster with critical service, create plan and assert for Validation Error messages.
+litp update -p /deployments/test/clusters/cluster1 -o critical_service='cs1'
+assertError --err_message 'The vcs-clustered-service "cs1" must have active=1 standby=1 to be a critical service.' --err_vpath /deployments/test/clusters/cluster1 create_plan

@@ -1,0 +1,30 @@
+runLitpScript ../cluster_common.atlib
+
+litp create -p /infrastructure/networking/networks/skynet -t network -o name=skynet subnet=100.100.100.0/24
+litp create -p /deployments/test/clusters/cluster1/nodes/node_1/network_interfaces/nic_4  -t eth -o device_name=eth4 macaddress=08:00:27:21:7D:B2 network_name=skynet ipaddress=100.100.100.101
+litp create -p /deployments/test/clusters/cluster1/nodes/node_2/network_interfaces/nic_4  -t eth -o device_name=eth4 macaddress=08:00:27:21:7D:B1 network_name=skynet ipaddress=100.100.100.100
+
+# Create 2 network hosts for skynet
+litp create -t vcs-network-host -p /deployments/test/clusters/cluster1/network_hosts/net1 -o network_name="skynet" ip="100.100.100.102"
+litp create -t vcs-network-host -p /deployments/test/clusters/cluster1/network_hosts/net2 -o network_name="skynet" ip="100.100.100.103"
+
+litp create_plan
+litp run_plan
+
+# Turn nic_4, and a newly-created nic_5 into slaves for a new bond on skynet
+litp create -t eth -p /deployments/test/clusters/cluster1/nodes/node_1/network_interfaces/nic_5 -o device_name=eth5 macaddress=08:00:27:06:C0:23 master=bond0
+litp update -p /deployments/test/clusters/cluster1/nodes/node_1/network_interfaces/nic_4 -o master=bond0 -d ipaddress network_name
+litp create -t bond -p /deployments/test/clusters/cluster1/nodes/node_1/network_interfaces/b0 -o device_name=bond0 ipaddress=100.100.100.106 network_name=skynet mode=1 miimon=100
+
+# Remove a network_host
+litp remove -p /deployments/test/clusters/cluster1/network_hosts/net2
+
+litp create_plan
+
+# Check task is only generated for for node_2
+assertNoCallbackTask callback_method /deployments/test/clusters/cluster1/nodes/node_1/network_interfaces/nic_4 callback_func=update_network_hosts callback_class=VCSNICServiceGroupUpdateHelper resource=Res_NIC_cluster1_eth4 sys=mn1 addresses='["100.100.100.102"]'
+
+assertCallbackTask callback_method /deployments/test/clusters/cluster1 callback_func=add_nicgrp_callback callback_class=VcsNICServiceGroupHelper nic_name=bond0 cluster_item_id=cluster1 mii='0' 
+
+assertCallbackTask callback_method /deployments/test/clusters/cluster1/nodes/node_2/network_interfaces/nic_4 callback_func=update_network_hosts callback_class=VCSNICServiceGroupUpdateHelper resource=Res_NIC_cluster1_eth4 sys=mn2 addresses='["100.100.100.102"]'
+

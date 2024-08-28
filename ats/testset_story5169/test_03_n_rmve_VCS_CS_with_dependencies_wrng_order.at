@@ -1,0 +1,42 @@
+# Test Case 03.
+
+# Test to verify that when a user tries to remove a VCS clustered service that is dependent on another
+# VCS clustered Service a validation error should be seen.
+
+# 1. Define VCS service groups that have a dependency on another VCS clustered Service.
+
+runLitpScript ../testset_common/common.atlib
+
+litp create -t service -p /software/services/mock1 -o service_name='mocklsb1'
+
+litp create -t vcs-clustered-service -p /deployments/test/clusters/cluster1/services/cs1 -o name="cs1" standby=0 active=1 node_list="node_1"
+litp inherit -s /software/services/mock1 -p /deployments/test/clusters/cluster1/services/cs1/applications/mock
+
+litp create -t service -p /software/services/mock2 -o service_name='mocklsb2'
+
+litp create -t vcs-clustered-service -p /deployments/test/clusters/cluster1/services/cs2 -o name="cs2" standby=0 active=1 node_list="node_1" dependency_list="cs1"
+litp inherit -s /software/services/mock2 -p /deployments/test/clusters/cluster1/services/cs2/applications/mock
+
+litp create -t service -p /software/services/mock3 -o service_name='mocklsb3'
+
+litp create -t vcs-clustered-service -p /deployments/test/clusters/cluster1/services/cs3 -o name="cs3" standby=0 active=1 node_list="node_1" dependency_list="cs2,cs4"
+litp inherit -s /software/services/mock3 -p /deployments/test/clusters/cluster1/services/cs3/applications/mock
+
+litp create -t service -p /software/services/mock4 -o service_name='mocklsb4'
+
+litp create -t vcs-clustered-service -p /deployments/test/clusters/cluster1/services/cs4 -o name="cs4" standby=0 active=1 node_list="node_1"
+litp inherit -s /software/services/mock4 -p /deployments/test/clusters/cluster1/services/cs4/applications/mock
+
+litp create_plan
+
+litp run_plan
+
+# 2. Remove dependent VCS Service Group that is dependent on by another VCS Service Group.
+
+litp remove -p /deployments/test/clusters/cluster1/services/cs4
+
+litp remove -p /deployments/test/clusters/cluster1/services/cs2
+
+# 3. Create Plan and Expect Validation Error to be received
+let __err_rm_dep --err_type ValidationError --err_message 'Create plan failed: The following clustered service dependencies are marked for removal: "cs2 and cs4"' --err_vpath /deployments/test/clusters/cluster1/services/cs3
+assertError __err_rm_dep create_plan

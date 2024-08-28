@@ -1,0 +1,12 @@
+runLitpScript ../cluster_common.atlib
+
+
+litp create -t vcs-clustered-service -p /deployments/test/clusters/cluster1/services/cs1 -o name="service1" active=1 standby=1 node_list="node_1,node_2"
+litp create -t service -p /software/services/service1 -o service_name=service1
+litp inherit -s /software/services/service1 -p /deployments/test/clusters/cluster1/services/cs1/applications/service1
+
+litp create -t vcs-clustered-service -p /deployments/test/clusters/cluster1/services/cs2 -o name="service2" active=1 standby=1 node_list="node_1,node_2" dependency_list=cs1 initial_online_dependency_list=nonexist
+litp create -t service -p /software/services/service2 -o service_name=service2
+litp inherit -s /software/services/service2 -p /deployments/test/clusters/cluster1/services/cs2/applications/service2
+
+assertError --errors_length=1 --err_type ValidationError --err_vpath /deployments/test/clusters/cluster1/services/cs2 --err_message 'The dependency "nonexist" in "initial_online_dependency_list" does not exist.' create_plan

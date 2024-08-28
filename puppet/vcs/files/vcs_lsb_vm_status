@@ -1,0 +1,14 @@
+#!/bin/bash
+
+RHELV=$(facter operatingsystemmajrelease)
+# Parameter 1 is name of service to control
+if [ $RHELV -gt 6 ]; then
+    /usr/share/litp_libvirt/vm_utils $1 status # For RHEL7
+else
+    /etc/init.d/$1 status        # For RHEL6
+fi
+if (( $? == 0 )); then
+    exit 110 # the resource is online with 100 percent confidence
+else
+    exit 100 # the resource is offline
+fi

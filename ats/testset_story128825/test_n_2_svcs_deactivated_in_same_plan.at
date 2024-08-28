@@ -1,0 +1,27 @@
+# Prerequisite - LITP deployment
+runLitpScript ../cluster_common.atlib
+runLitpScript ../add_2_nodes_to_cluster.atlib
+
+litp create -t vcs-clustered-service -p /deployments/test/clusters/cluster1/services/CS1 -o name=cs1 active=1 standby=1 node_list=node_1,node_2
+litp create -t service -p /software/services/service01 -o service_name=service01
+litp inherit -s /software/services/service01 -p /deployments/test/clusters/cluster1/services/CS1/applications/service01
+
+litp create -t vcs-clustered-service -p /deployments/test/clusters/cluster1/services/CS2 -o name=cs2 active=1 standby=1 node_list=node_1,node_2
+litp create -t service -p /software/services/service02 -o service_name=service02
+litp inherit -s /software/services/service02 -p /deployments/test/clusters/cluster1/services/CS2/applications/service02
+
+litp create_plan
+litp run_plan
+
+litp create -t vcs-clustered-service -p /deployments/test/clusters/cluster1/services/CS3 -o name=cs3 active=1 standby=1 node_list=node_3,node_4 deactivates=CS1
+litp create -t service -p /software/services/service03 -o service_name=service03
+litp inherit -s /software/services/service03 -p /deployments/test/clusters/cluster1/services/CS3/applications/service03
+
+litp create -t vcs-clustered-service -p /deployments/test/clusters/cluster1/services/CS4 -o name=cs4 active=1 standby=1 node_list=node_3,node_4 deactivates=CS2
+litp create -t service -p /software/services/service04 -o service_name=service04
+litp inherit -s /software/services/service04 -p /deployments/test/clusters/cluster1/services/CS4/applications/service04
+
+let __err1 --err_type ValidationError --err_vpath /deployments/test/clusters/cluster1/services/CS3 --err_message 'Cannot deactivate more than one vcs-clustered-service within the same vcs-cluster'
+let __err2 --err_type ValidationError --err_vpath /deployments/test/clusters/cluster1/services/CS4 --err_message 'Cannot deactivate more than one vcs-clustered-service within the same vcs-cluster'
+assertError __err2 __err1 create_plan
+

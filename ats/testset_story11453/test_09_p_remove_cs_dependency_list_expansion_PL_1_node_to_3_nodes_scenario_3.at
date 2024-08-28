@@ -1,0 +1,42 @@
+runLitpScript  ../testset_common/three_nodes_common.atlib
+
+# Create cs1
+litp create -t service -p /software/services/mock -o service_name='mocklsb'
+litp create -t vcs-clustered-service -p /deployments/test/clusters/cluster1/services/cs1/ -o name="cs1" standby=0 active=1 node_list="node_1"
+litp inherit -s /software/services/mock -p /deployments/test/clusters/cluster1/services/cs1/applications/mock
+
+# Create cs2
+litp create -t service -p /software/services/mock2 -o service_name='mocklsb2'
+litp create -t vcs-clustered-service -p /deployments/test/clusters/cluster1/services/cs2/ -o name="cs2" standby=0 active=1 node_list="node_1" dependency_list=cs1
+litp inherit -s /software/services/mock2 -p /deployments/test/clusters/cluster1/services/cs2/applications/mock2
+
+# Create cs3
+litp create -t service -p /software/services/mock3 -o service_name='mocklsb3'
+litp create -t vcs-clustered-service -p /deployments/test/clusters/cluster1/services/cs3/ -o name="cs3" standby=0 active=1 node_list="node_1" dependency_list=cs1,cs2
+litp inherit -s /software/services/mock3 -p /deployments/test/clusters/cluster1/services/cs3/applications/mock3
+
+litp create_plan
+litp run_plan
+
+# Update CS2 to not depend on CS1
+litp update -p /deployments/test/clusters/cluster1/services/cs2/ -o dependency_list=""
+litp update -p /deployments/test/clusters/cluster1/services/cs3/ -o dependency_list=""
+
+# Then expand CS1 and CS2 to 2 node clustered-services
+litp update -p /deployments/test/clusters/cluster1/services/cs1/ -o standby=0 active=3 node_list="node_1,node_2,node_3"
+litp update -p /deployments/test/clusters/cluster1/services/cs2/ -o standby=0 active=3 node_list="node_1,node_2,node_3"
+
+litp create_plan
+
+# Ensure that the task for service group dependencies removal is before the SG expansions
+let __task_update_deps_rm_cs2 CallbackTask callback_method /deployments/test/clusters/cluster1/services/cs2 callback_func=update_remove_dependencies_callback callback_class=VcsServiceGroupHelper service_vpath=/deployments/test/clusters/cluster1/services/cs2 cluster_item_id=cluster1 service_group_name='Grp_CS_cluster1_cs2'
+let __task_update_deps_rm_cs3 CallbackTask callback_method /deployments/test/clusters/cluster1/services/cs3 callback_func=update_remove_dependencies_callback callback_class=VcsServiceGroupHelper service_vpath=/deployments/test/clusters/cluster1/services/cs3 cluster_item_id=cluster1 service_group_name='Grp_CS_cluster1_cs3'
+let __task_expand_sg1 CallbackTask callback_method /deployments/test/clusters/cluster1/services/cs1 callback_func=update_callback callback_class=VcsServiceGroupHelper service_vpath=/deployments/test/clusters/cluster1/services/cs1 cluster_item_id=cluster1
+let __task_expand_sg2 CallbackTask callback_method /deployments/test/clusters/cluster1/services/cs2 callback_func=update_callback callback_class=VcsServiceGroupHelper service_vpath=/deployments/test/clusters/cluster1/services/cs2 cluster_item_id=cluster1
+
+assertTaskBeforeTask __task_update_deps_rm_cs2 __task_expand_sg1
+assertTaskBeforeTask __task_update_deps_rm_cs2 __task_expand_sg2
+assertTaskBeforeTask __task_update_deps_rm_cs3 __task_expand_sg1
+assertTaskBeforeTask __task_update_deps_rm_cs3 __task_expand_sg2
+
+litp run_plan

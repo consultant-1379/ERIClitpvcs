@@ -1,0 +1,40 @@
+# An AT to prove that the vcs plugin can handle the service getting into an apd state and support removal of the service 
+# while in APD state.
+
+# Early setup stage
+add-plugins litpcds_13411/development/online_cb_mock
+runLitpScript cluster_common.atlib
+
+litp create -t eth -p /deployments/test/clusters/cluster1/nodes/node_1/network_interfaces/nic_A -o device_name=eth0 macaddress=08:00:27:5B:C1:5F network_name=mgmt ipaddress=10.10.10.111
+litp create -t eth -p /deployments/test/clusters/cluster1/nodes/node_2/network_interfaces/nic_B -o device_name=eth0 macaddress=08:00:27:5B:C1:4F network_name=mgmt ipaddress=10.10.10.112
+
+# Create the vcs-cluster-service
+litp create -t service -p /software/services/s1 -o service_name='ser1'
+litp create -t service -p /software/services/s2 -o service_name='ser2'
+litp create -t service -p /software/services/s3 -o service_name='ser3'
+
+litp create -t vcs-clustered-service -p /deployments/test/clusters/cluster1/services/cs1/ -o name="cs1" standby=1 active=1 node_list="node_1,node_2"
+litp create -t vcs-clustered-service -p /deployments/test/clusters/cluster1/services/cs2/ -o name="cs2" standby=1 active=1 node_list="node_1,node_2"
+litp create -t vcs-clustered-service -p /deployments/test/clusters/cluster1/services/cs3/ -o name="cs3" standby=1 active=1 node_list="node_1,node_2" dependency_list=cs1,cs2
+litp create -p /deployments/test/clusters/cluster1/services/cs1/ipaddresses/ip1 -t vip -o network_name='mgmt' ipaddress='10.10.10.155'
+litp create -p /deployments/test/clusters/cluster1/services/cs2/ipaddresses/ip1 -t vip -o network_name='mgmt' ipaddress='10.10.10.156'
+litp create -p /deployments/test/clusters/cluster1/services/cs3/ipaddresses/ip1 -t vip -o network_name='mgmt' ipaddress='10.10.10.157'
+litp inherit -s /software/services/s1 -p /deployments/test/clusters/cluster1/services/cs1/applications/mock
+litp inherit -s /software/services/s2 -p /deployments/test/clusters/cluster1/services/cs2/applications/mock
+litp inherit -s /software/services/s3 -p /deployments/test/clusters/cluster1/services/cs3/applications/mock
+
+litp create_plan
+failCallbackTask mock_online_callback /deployments/test/clusters/cluster1/services/cs3
+litp run_plan
+
+assertAppliedPropertiesDeterminable -p /deployments/test/clusters/cluster1/services/cs3 False
+
+litp remove -p /deployments/test/clusters/cluster1/services/cs3
+litp create_plan
+
+assertNoCallbackTask callback_method /deployments/test/clusters/cluster1/services/cs1
+assertNoCallbackTask callback_method /deployments/test/clusters/cluster1/services/cs2
+assertCallbackTask callback_method /deployments/test/clusters/cluster1/services/cs3 callback_func=delete_callback callback_class=VcsServiceGroupHelper service_vpath=/deployments/test/clusters/cluster1/services/cs3 cluster_vpath=/deployments/test/clusters/cluster1
+
+add-plugins litpcds_13411/development/online_cb_mock_restore
+

@@ -1,0 +1,19 @@
+runLitpScript cluster_common.atlib
+
+litp create_plan
+litp run_plan
+
+
+litp create -p /deployments/test/clusters/cluster1/nodes/node_1/network_interfaces/nic_4  -t eth              -o device_name=eth4 macaddress=08:00:27:5B:C1:36
+litp create -p /deployments/test/clusters/cluster1/nodes/node_2/network_interfaces/nic_4  -t eth              -o device_name=eth4 macaddress=08:00:27:5B:C1:38
+
+litp create_plan
+litp run_plan
+
+litp remove -p /deployments/test/clusters/cluster1/nodes/node_1/network_interfaces/nic_4
+litp remove -p /deployments/test/clusters/cluster1/nodes/node_2/network_interfaces/nic_4
+
+litp create -p /deployments/test/clusters/cluster1/nodes/node_1/network_interfaces/nic_5  -t eth              -o device_name=eth5 macaddress=08:00:27:5B:C1:36
+litp create -p /deployments/test/clusters/cluster1/nodes/node_2/network_interfaces/nic_5  -t eth              -o device_name=eth5 macaddress=08:00:27:5B:C1:38
+
+litp create_plan

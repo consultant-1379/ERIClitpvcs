@@ -1,0 +1,14 @@
+runLitpScript cluster_common.atlib
+
+litp create -t service -p /software/services/mock -o service_name=mocklsb
+
+litp create -t vcs-clustered-service -p /deployments/test/clusters/cluster1/services/cs1 -o name="cs1" active=2 standby=0 node_list="node_1,node_2"
+
+litp inherit -s /software/services/mock -p /deployments/test/clusters/cluster1/services/cs1/applications/mock1
+
+litp inherit -s /software/services/mock -p /deployments/test/clusters/cluster1/services/cs1/applications/mock2
+
+litp inherit -s /software/services/mock -p /deployments/test/clusters/cluster1/services/cs1/applications/mock3
+
+
+assertError --err_message "Multiple services are only supported in a failover or a one node parallel vcs-clustered-service." --err_vpath /deployments/test/clusters/cluster1/services/cs1 --errors_length 1 create_plan

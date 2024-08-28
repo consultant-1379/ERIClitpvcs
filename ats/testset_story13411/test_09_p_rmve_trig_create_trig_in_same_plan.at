@@ -1,0 +1,38 @@
+######################################################
+# LITPCDS-13411:
+#     test_09_p_rmve_trig_create_trig_in_same_plan
+# Description:
+#     Test to verify that a user can remove and add a VCS trigger in
+#     the same plan and there should be no errors
+# Steps:
+#     Create a fail over clustered service group with NOFAILOVER trigger configured
+#     Create/ Run Plan
+#     Remove NOFAILOVER trigger from clustered service
+#     Create new NOFAILOVER trigger on same clustered service
+#     Create/ Run Plan again
+#     Assert no errors are received
+# Result:
+#     CS can have a vcs trigger configured and removed in the same plan
+######################################################
+runLitpScript ../cluster_common.atlib
+
+# Step 1: Create a fail over clustered service group with NOFAILOVER trigger configured
+litp create -t service -p /software/services/mock1 -o service_name='mocklsb1'
+litp create -t vcs-clustered-service -p /deployments/test/clusters/cluster1/services/CS_13411_1/ -o name="cs1" standby=1 active=1 node_list="node_1,node_2"
+litp inherit -s /software/services/mock1 -p /deployments/test/clusters/cluster1/services/CS_13411_1/applications/mock1
+litp create -p /deployments/test/clusters/cluster1/services/CS_13411_1/triggers/trig1 -t vcs-trigger -o trigger_type=nofailover
+
+# Step 2: Create/ Run plan
+litp create_plan
+litp run_plan
+
+# Step 3: Remove NOFAILOVER trigger from clustered service
+litp remove -p /deployments/test/clusters/cluster1/services/CS_13411_1/triggers/trig1
+
+# Step 4: Create new NOFAILOVER trigger on same clustered service
+litp create -p /deployments/test/clusters/cluster1/services/CS_13411_1/triggers/trig2 -t vcs-trigger -o trigger_type=nofailover
+
+# Step 5: Create/ Run plan again
+# Step 6: Assert no errors are returned
+litp create_plan
+litp run_plan

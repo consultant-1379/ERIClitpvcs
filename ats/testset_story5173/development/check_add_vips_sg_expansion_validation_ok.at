@@ -1,0 +1,28 @@
+runLitpScript ../../cluster_common.atlib
+
+add-plugins ../../patch_mco_agent
+
+# Create a service with 2 VIPs
+litp create -t service -p /software/services/s1 -o service_name=svc1
+litp create -t vcs-clustered-service -p /deployments/test/clusters/cluster1/services/cs1 -o active=2 standby=0 name="cs1" node_list="node_1,node_2"
+litp inherit -s /software/services/s1 -p /deployments/test/clusters/cluster1/services/cs1/applications/app1
+litp create -p /deployments/test/clusters/cluster1/services/cs1/ipaddresses/ip1 -t vip -o network_name='mgmt' ipaddress='10.10.10.1'
+litp create -p /deployments/test/clusters/cluster1/services/cs1/ipaddresses/ip2 -t vip -o network_name='mgmt' ipaddress='10.10.10.2'
+litp create_plan
+litp run_plan
+
+# Add nodes to the cluster and expand the service to one of the nodes
+runLitpScript ../../add_2_nodes_to_cluster.atlib
+litp update -p /deployments/test/clusters/cluster1/services/cs1 -o active=3 node_list="node_1,node_2,node_3"
+litp create -p /deployments/test/clusters/cluster1/services/cs1/ipaddresses/ip3 -t vip -o network_name='mgmt' ipaddress='10.10.10.3'
+litp create_plan
+
+# Fail the first Callback task on the Cluster which should be the "Check VCS Engine Running" task after node lock
+# leaving the node in Applied state but the Interface is still in Initial
+failCallbackTask callback_method /deployments/test/clusters/cluster1
+litp run_plan
+
+# Re-run the plan, This should not fail validation for VIPs not allowed on interfaces in state initial as this is expansion
+# so VIPs are added after node tasks
+litp create_plan
+

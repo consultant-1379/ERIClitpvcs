@@ -1,0 +1,27 @@
+# TORF- 122323 - As an ENM user I want to allow a service to be identified as critical when there is more than
+# 2 nodes in the cluster so that I can have a 4 node cluster
+#
+#	test_04_p_4_nodes_with_critical_serv_defined
+#		Description: Test to verify that at initial install the model can have 4 nodes, and define a FO CS
+#		that is a critical service on the cluster
+#		Steps: 1. Define a FO service group in the litp model with 4 nodes
+#			   2. Update FO service group to be a critical service
+#			   3. Create/ Run Plan
+#			   4. Assert no Errors are raised
+#
+#		Expected Result: Test will pass without any assertions raised
+#
+runLitpScript ../testset_common/cluster_common_four_node.atlib
+
+# Step 1: Define a FO service group in the litp model with 4 nodes
+litp create -t service -p /software/services/mock -o service_name='mocklsb'
+litp create -t vcs-clustered-service -p /deployments/test/clusters/cluster1/services/cs1 -o name="cs1" standby=1 active=1 node_list="node_1,node_2"
+litp inherit -s /software/services/mock -p /deployments/test/clusters/cluster1/services/cs1/applications/mock
+
+# Step 2: Update FO service group to be a critical service
+litp update -p /deployments/test/clusters/cluster1/ -o critical_service="cs1"
+
+# Step 3: Create/ Run Plan
+litp create_plan
+
+# Step 4: No Errors returned

@@ -1,0 +1,47 @@
+######################################################
+# LITPCDS-11241:
+#     test_02_p_update_updated_cs_dependency_list
+# Description:
+#     Positive test that checks that LITP can update multiple updated
+#     VCS Clustered Services by adding new VCS Clustered Services
+#     to dependency_list property.
+# Steps:
+#     Create 4 clustered services with dependencies
+#     Create/ Run Plan
+#     Update first 2 CS dependency_list property to point to the fourth clustered service whilst updating its online/offline timeouts
+#     Create/ Run Plan again
+#     Assert no errors are received
+# Result:
+#     CS dependency_list can be updated without any conflicts
+######################################################
+runLitpScript ../cluster_common.atlib
+
+# Step 1: Create 4 clustered services with dependencies
+litp create -t service -p /software/services/mock1 -o service_name='mocklsb1'
+litp create -t vcs-clustered-service -p /deployments/test/clusters/cluster1/services/CS_11241_1/ -o name="cs1" standby=1 active=1 node_list="node_1,node_2" dependency_list=CS_11241_3
+litp inherit -s /software/services/mock1 -p /deployments/test/clusters/cluster1/services/CS_11241_1/applications/mock1
+
+litp create -t service -p /software/services/mock2 -o service_name='mocklsb2'
+litp create -t vcs-clustered-service -p /deployments/test/clusters/cluster1/services/CS_11241_2/ -o name="cs2" standby=0 active=2 node_list="node_1,node_2" dependency_list=CS_11241_3
+litp inherit -s /software/services/mock2 -p /deployments/test/clusters/cluster1/services/CS_11241_2/applications/mock2
+
+litp create -t service -p /software/services/mock3 -o service_name='mocklsb3'
+litp create -t vcs-clustered-service -p /deployments/test/clusters/cluster1/services/CS_11241_3/ -o name="cs3" standby=0 active=2 node_list="node_1,node_2"
+litp inherit -s /software/services/mock3 -p /deployments/test/clusters/cluster1/services/CS_11241_3/applications/mock3
+
+litp create -t service -p /software/services/mock4 -o service_name='mocklsb4'
+litp create -t vcs-clustered-service -p /deployments/test/clusters/cluster1/services/CS_11241_4/ -o name="cs4" standby=1 active=1 node_list="node_1,node_2"
+litp inherit -s /software/services/mock4 -p /deployments/test/clusters/cluster1/services/CS_11241_4/applications/mock4
+
+# Step 2: Create/ Run plan
+litp create_plan
+litp run_plan
+
+# Step 3: Update first 2 CS dependency_list property to point to the fourth clustered service whilst updating its online/offline timeouts
+litp update -p /deployments/test/clusters/cluster1/services/CS_11241_1/ -o dependency_list=CS_11241_3,CS_11241_4 online_timeout=600 offline_timeout=900
+litp update -p /deployments/test/clusters/cluster1/services/CS_11241_2/ -o dependency_list=CS_11241_3,CS_11241_4 online_timeout=600 offline_timeout=900
+
+# Step 4: Create/ Run plan again
+# Step 5: Assert no errors are returned
+litp create_plan
+litp run_plan

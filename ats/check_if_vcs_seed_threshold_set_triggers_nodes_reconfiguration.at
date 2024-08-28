@@ -1,0 +1,44 @@
+##############
+# This AT is for development testing
+#
+# Goal: check if tasks to reconfigure the nodes are created
+#       when the vcs_seed_threshold property of vcs-cluster item
+#       is defined with a valid value.
+#
+# Scenario:
+#       Inherited from cluster_common.atlib
+#
+# Actions:
+#       Set vcs_seed_threshold, create and run a plan
+#
+
+####
+# Bulding the scenario
+#
+assertNoPlan
+runLitpScript cluster_common.atlib
+
+####
+# Actions
+#
+litp update -p /deployments/test/clusters/cluster1 -o vcs_seed_threshold='2'
+litp create_plan
+
+####
+# Pre-run Checks
+#
+assertConfigTask mn1 vcs::configure cluster1 /deployments/test/clusters/cluster1/nodes/node_1 number_of_nodes='2' heartbeats_MACs='{"eth3": "08:00:27:21:7D:BC", "eth2": "08:00:27:06:C0:61"}' hostname='mn1' clust_type='sfha' cluster_name='cluster1' fencing_dg_name='null' cluster_ID='1' managment_MAC='{"eth0": "08:00:27:5B:C1:3F"}' cluster_UUID='16f764c0-8637-3668-a788-33d313f8ea20' license_key='ENTERPRISE' hostnames='{"1": "mn1", "0": "mn2"}' rpm_list='VRTSveki VRTSperl VRTSvlic VRTSspt VRTSvxvm VRTSaslapm VRTSvxfs VRTSfssdk VRTSllt VRTSgab VRTSvxfen VRTSamf VRTSpython VRTSvcs VRTSvcsag VRTSvcsea VRTSdbed VRTSodm VRTSsfmh VRTSvbs VRTSvcswiz VRTSsfcpi VRTSglm VRTScavf VRTSgms' manage_vxfencing='false' base_os='rhel6' heartbeats_SAPs='{}' management_SAP='{}' boot_mode='bios'
+
+assertConfigTask mn2 vcs::configure cluster1 /deployments/test/clusters/cluster1/nodes/node_2 number_of_nodes='2' heartbeats_MACs='{"eth3": "08:00:27:21:7D:B3", "eth2": "08:00:27:06:C0:62"}' hostname='mn2' clust_type='sfha' cluster_name='cluster1' fencing_dg_name='null' cluster_ID='1' managment_MAC='{"eth0": "08:00:27:5B:C1:31"}' cluster_UUID='16f764c0-8637-3668-a788-33d313f8ea20' license_key='ENTERPRISE' hostnames='{"1": "mn1", "0": "mn2"}' rpm_list='VRTSveki VRTSperl VRTSvlic VRTSspt VRTSvxvm VRTSaslapm VRTSvxfs VRTSfssdk VRTSllt VRTSgab VRTSvxfen VRTSamf VRTSpython VRTSvcs VRTSvcsag VRTSvcsea VRTSdbed VRTSodm VRTSsfmh VRTSvbs VRTSvcswiz VRTSsfcpi VRTSglm VRTScavf VRTSgms' manage_vxfencing='false' base_os='rhel6' heartbeats_SAPs='{}' management_SAP='{}' boot_mode='bios'
+
+#####
+# Run plan
+#
+litp run_plan
+
+#####
+# Post-run Checks
+#
+assertPlanState successful
+assertProperty /deployments/test/clusters/cluster1 -o vcs_seed_threshold='2'
+assertState -p /deployments/test/clusters/cluster1 Applied

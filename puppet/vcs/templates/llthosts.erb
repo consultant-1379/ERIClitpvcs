@@ -1,0 +1,9 @@
+<% if @hostnames.is_a?(Array) -%>
+<% @hostnames.each_with_index do |hostname, i| -%>
+<%= i %> <%= hostname %>
+<% end -%>
+<% else -%>
+<% @hostnames.keys.sort.each do |id| -%>
+<%= id %> <%= @hostnames[id] %>
+<% end -%>
+<% end -%>
